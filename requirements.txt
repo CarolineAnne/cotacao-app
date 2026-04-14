@@ -1,0 +1,5 @@
+reportlab
+streamlit
+pandas
+numpy
+matplotlib
