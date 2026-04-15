@@ -570,21 +570,71 @@ else:
                 pmin_padrao = float(ultima.iloc[0]["preco_min"]) if not ultima.empty else 0.0
                 pmax_padrao = float(ultima.iloc[0]["preco_max"]) if not ultima.empty else 0.0
 
-                col1, col2, col3 = st.columns(3)
+                col1, col2 = st.columns([1,2])
 
                 with col1:
                     st.write(produto)
 
                 with col2:
-                    pmin = st.number_input("Min", value=pmin_padrao, key=f"min_{produto}")
+                    st.write("Adicionar preços:")
 
-                with col3:
-                    pmax = st.number_input("Max", value=pmax_padrao, key=f"max_{produto}")
+                    # inicializa lista com última cotação
+                    if f"precos_{produto}" not in st.session_state:
+                        if not ultima.empty:
+                            st.session_state[f"precos_{produto}"] = [
+                                float(ultima.iloc[0]["preco_min"]),
+                                float(ultima.iloc[0]["preco_max"])
+                            ]
+                        else:
+                            st.session_state[f"precos_{produto}"] = []
 
-                preco_medio = (pmin + pmax) / 2 if (pmin > 0 or pmax > 0) else 0
-                valor_kg = (preco_medio / row["kg"]) if row["kg"] > 0 else 0
+                    precos = st.session_state[f"precos_{produto}"]
 
-                st.caption(f"Preço médio: {preco_medio:.2f} | Valor/kg: {valor_kg:.2f}")
+                    # 🔹 BOTÕES LADO A LADO
+                    b1, b2 = st.columns(2)
+
+                    with b1:
+                        if st.button(f"➕ Adicionar", key=f"add_{produto}"):
+                            precos.append(0.0)
+
+                    with b2:
+                        if precos and st.button(f"➖ Remover", key=f"rem_{produto}"):
+                            precos.pop()
+
+                    # 🔹 PREÇOS LADO A LADO (3 por linha)
+                    cols = st.columns(3)
+
+                    for i in range(len(precos)):
+                        col = cols[i % 3]
+                        with col:
+                            precos[i] = st.number_input(
+                                f"P{i+1}",
+                                value=precos[i],
+                                key=f"{produto}_{i}"
+                            )
+
+                    # 🔹 CÁLCULOS
+                    precos_validos = [p for p in precos if p > 0]
+
+                    if precos_validos:
+                        pmin = min(precos_validos)
+                        pmax = max(precos_validos)
+                        preco_medio = sum(precos_validos) / len(precos_validos)
+                    else:
+                        pmin = pmax = preco_medio = 0
+
+                    valor_kg = (preco_medio / row["kg"]) if row["kg"] > 0 else 0
+
+                # 🔹 RESULTADOS (TODOS LADO A LADO)
+                def formatar(valor):
+                    return f"{valor:.2f}".replace(".", ",")
+                st.caption(
+                    f"🔽 Mín: {pmin:.2f}   🔼 Máx: {pmax:.2f}   📊 Médio: {preco_medio:.2f}   ⚖️ Valor/Kg: {valor_kg:.2f}"
+                )
+
+                #preco_medio = (pmin + pmax) / 2 if (pmin > 0 or pmax > 0) else 0
+                #valor_kg = (preco_medio / row["kg"]) if row["kg"] > 0 else 0
+                #st.caption(f"Preço médio: {preco_medio:.2f} | Valor/kg: {valor_kg:.2f}")
 
                     # 🔔 ALERTA DE VARIAÇÃO
                 if not ultima.empty:
