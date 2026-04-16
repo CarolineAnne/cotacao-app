@@ -291,6 +291,7 @@ else:
     # ------------------ INÍCIO ------------------ #
     if opcao == "Início":
         st.title("📊 Sistema de Cotação")
+        st.image("home.png", use_container_width=True)
 
     # ------------------ CADASTRO DE USUÁRIOS ------------------ #
     elif opcao == "Cadastro de Usuários":
