@@ -298,7 +298,7 @@ else:
             unsafe_allow_html=True
         )
     
-        st.image("capa.png", use_container_width=True)
+        st.image("home.png", use_container_width=True)
 
     # ------------------ CADASTRO DE USUÁRIOS ------------------ #
     elif opcao == "Cadastro de Usuários":
