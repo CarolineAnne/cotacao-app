@@ -4,21 +4,6 @@ import pandas as pd
 from datetime import datetime
 import io
 
-def set_background(image_path):
-    st.markdown(
-        '<style>'
-        '.stApp {'
-        'background-image: url("' + image_path + '");'
-        'background-size: cover;'
-        'background-position: center;'
-        'background-repeat: no-repeat;'
-        '}'
-        '</style>',
-        unsafe_allow_html=True
-    )
-
-set_background("home.png")
-
 # ------------------ CONEXÃO ------------------ #
 def conectar():
     return sqlite3.connect("database.db")
@@ -312,6 +297,8 @@ else:
             "<small><i>Utilize o menu lateral para navegar pelas funcionalidades.</i></small>",
             unsafe_allow_html=True
         )
+    
+        st.image("capa.png", use_container_width=True)
 
     # ------------------ CADASTRO DE USUÁRIOS ------------------ #
     elif opcao == "Cadastro de Usuários":
