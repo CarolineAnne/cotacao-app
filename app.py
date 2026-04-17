@@ -3,6 +3,22 @@ import sqlite3
 import pandas as pd
 from datetime import datetime
 import io
+import streamlit as st
+
+def set_background(image_path):
+    st.markdown(
+        '<style>'
+        '.stApp {'
+        'background-image: url("' + image_path + '");'
+        'background-size: cover;'
+        'background-position: center;'
+        'background-repeat: no-repeat;'
+        '}'
+        '</style>',
+        unsafe_allow_html=True
+    )
+
+set_background("home.png")
 
 # ------------------ CONEXÃO ------------------ #
 def conectar():
@@ -291,11 +307,12 @@ else:
     # ------------------ INÍCIO ------------------ #
     if opcao == "Início":
 
-        st.title("📊 Sistema de Cotação")
-        st.markdown("### Bem-vindo ao sistema")
-        st.markdown("<small><i>Utilize o menu lateral para navegar pelas funcionalidades.</i></small>", unsafe_allow_html=True)
-
-        st.image("capa.gif")
+    st.title("📊 Sistema de Cotação")
+    st.markdown("### Bem-vindo ao sistema")
+    st.markdown(
+        "<small><i>Utilize o menu lateral para navegar pelas funcionalidades.</i></small>",
+        unsafe_allow_html=True
+    )
 
     # ------------------ CADASTRO DE USUÁRIOS ------------------ #
     elif opcao == "Cadastro de Usuários":
