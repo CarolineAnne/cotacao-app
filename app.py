@@ -307,12 +307,12 @@ else:
     # ------------------ INÍCIO ------------------ #
     if opcao == "Início":
 
-    st.title("📊 Sistema de Cotação")
-    st.markdown("### Bem-vindo ao sistema")
-    st.markdown(
-        "<small><i>Utilize o menu lateral para navegar pelas funcionalidades.</i></small>",
-        unsafe_allow_html=True
-    )
+        st.title("📊 Sistema de Cotação")
+        st.markdown("### Bem-vindo ao sistema")
+        st.markdown(
+            "<small><i>Utilize o menu lateral para navegar pelas funcionalidades.</i></small>",
+            unsafe_allow_html=True
+        )
 
     # ------------------ CADASTRO DE USUÁRIOS ------------------ #
     elif opcao == "Cadastro de Usuários":
