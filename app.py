@@ -3,7 +3,6 @@ import sqlite3
 import pandas as pd
 from datetime import datetime
 import io
-import streamlit as st
 
 def set_background(image_path):
     st.markdown(
