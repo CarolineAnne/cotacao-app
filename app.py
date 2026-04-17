@@ -290,8 +290,12 @@ else:
 
     # ------------------ INÍCIO ------------------ #
     if opcao == "Início":
+
         st.title("📊 Sistema de Cotação")
-        st.image("home.png", use_container_width=True)
+        st.markdown("### Bem-vindo ao sistema")
+        st.markdown("<small><i>Utilize o menu lateral para navegar pelas funcionalidades.</i></small>", unsafe_allow_html=True)
+
+        st.image("capa.gif")
 
     # ------------------ CADASTRO DE USUÁRIOS ------------------ #
     elif opcao == "Cadastro de Usuários":
