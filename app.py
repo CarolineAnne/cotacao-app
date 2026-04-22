@@ -8,11 +8,11 @@ import psycopg2
 # ------------------ CONEXÃO ------------------ #
 def conectar():
     return psycopg2.connect(
-        host="db.yovuvhuubopujagvukki.supabase.co",
-        database="postgres",
-        user="postgres",
-        password="AnneCarol91",
-        port="5432"
+        host=st.secrets["DB_HOST"],
+        database=st.secrets["DB_NAME"],
+        user=st.secrets["DB_USER"],
+        password=st.secrets["DB_PASSWORD"],
+        port=st.secrets["DB_PORT"]
     )
 
 # ------------------ LOGIN ------------------ #
