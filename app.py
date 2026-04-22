@@ -5,12 +5,12 @@ from datetime import datetime
 import io
 import psycopg2
 import streamlit as st
-from supabase import cotacao-app
+from supabase import create_client
 
 # ------------------ CONEXÃO ------------------ #
 url = "https://yovuvhuubopujagvukki.supabase.co/rest/v1/"
 key = "sb_publishable_xdViPgvmVxBvpjpNblJg6Q_sMX_QHje"
-supabase = cotacao-app(url,key)
+supabase = create_client(url,key)
 
 # ------------------ LOGIN ------------------ #
 def verificar_login(usuario, senha):
