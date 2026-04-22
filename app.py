@@ -4,9 +4,10 @@ import pandas as pd
 from datetime import datetime
 import io
 import psycopg2
+import streamlit as st
 
 # ------------------ CONEXÃO ------------------ #
-conn = psycopg2.connect(
+connection = psycopg2.connect(
     st.secrets["DATABASE_URL"],
     sslmode="require"
 )
