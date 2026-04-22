@@ -6,8 +6,14 @@ import io
 import psycopg2
 
 # ------------------ CONEXÃO ------------------ #
-def conectar():
-    return psycopg2.connect(st.secrets["DATABASE_URL"])
+conn = psycopg2.connect(
+    host=st.secrets["DB_HOST"],
+    dbname=st.secrets["DB_NAME"],
+    user=st.secrets["DB_USER"],
+    password=st.secrets["DB_PASSWORD"],
+    port=int(st.secrets["DB_PORT"]),
+    sslmode="require"
+)
 
 # ------------------ LOGIN ------------------ #
 def verificar_login(usuario, senha):
