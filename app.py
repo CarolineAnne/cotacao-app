@@ -4,8 +4,17 @@ import pandas as pd
 from datetime import datetime
 import io
 import psycopg2
+from supabase import create_client, Client
+from dotenv import load_dotenv
 
 # ------------------ CONEXÃO ------------------ #
+load_dotenv()
+
+url = os.getenv("SUPABASE_URL")
+key = os.getenv("SUPABASE_KEY")
+
+supabase: Client = create_client(url, key)
+
 conn = psycopg2.connect(
     host=st.secrets["DB_HOST"],
     dbname=st.secrets["DB_NAME"],
