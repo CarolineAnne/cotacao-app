@@ -17,14 +17,17 @@ def verificar_login(usuario, senha):
     conn = conectar()
     cursor = conn.cursor()
 
-    cursor.execute("""
-        SELECT nome, nivel FROM usuarios
-        WHERE usuario = ? AND senha = ?
-    """, (usuario, senha))
+    try:
+        cursor.execute("""
+            SELECT nome, nivel FROM usuarios
+            WHERE usuario = %s AND senha = %s
+        """, (usuario, senha))
 
-    resultado = cursor.fetchone()
-    conn.close()
-    return resultado
+        resultado = cursor.fetchone()
+        return resultado
+
+    finally:
+        conn.close()
 
 # ------------------ GERAR PDF ------------------ #
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak
