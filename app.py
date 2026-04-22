@@ -3,10 +3,17 @@ import sqlite3
 import pandas as pd
 from datetime import datetime
 import io
+import psycopg2
 
 # ------------------ CONEXÃO ------------------ #
 def conectar():
-    return sqlite3.connect("database.db")
+    return psycopg2.connect(
+        host="db.yovuvhuubopujagvukki.supabase.co",
+        database="postgres",
+        user="postgres",
+        password="AnneCarol91",
+        port="5432"
+    )
 
 # ------------------ LOGIN ------------------ #
 def verificar_login(usuario, senha):
