@@ -1,9 +1,7 @@
-reportlab
 streamlit
 pandas
 numpy
 matplotlib
 openpyxl
-matplotlib
 psycopg2-binary
-pip install psycopg2-binary openpyxl
+reportlab
