@@ -5,12 +5,12 @@ from datetime import datetime
 import io
 import psycopg2
 import streamlit as st
+from supabase import creat_client
 
 # ------------------ CONEXÃO ------------------ #
-connection = psycopg2.connect(
-    st.secrets["DATABASE_URL"],
-    sslmode="require"
-)
+url = "https://yovuvhuubopujagvukki.supabase.co/rest/v1/"
+key = "sb_publishable_xdViPgvmVxBvpjpNblJg6Q_sMX_QHje"
+supabase = creat_client(url,base)
 
 # ------------------ LOGIN ------------------ #
 def verificar_login(usuario, senha):
