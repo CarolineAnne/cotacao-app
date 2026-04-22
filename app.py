@@ -10,6 +10,17 @@ conn = psycopg2.connect(
     st.secrets["DATABASE_URL"],
     sslmode="require"
 )
+
+# TESTE DE CONEXÃO
+try:
+    conn = psycopg2.connect(
+        st.secrets["DATABASE_URL"],
+        sslmode="require"
+    )
+    st.success("Conectou no banco!")
+except Exception as e:
+    st.error(e)
+    
 # ------------------ LOGIN ------------------ #
 def verificar_login(usuario, senha):
     conn = conectar()
