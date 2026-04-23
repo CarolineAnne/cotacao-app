@@ -25,14 +25,14 @@ def verificar_login(usuario, senha):
     return resultado
 
 # ------------------ CONEXÃO ------------------ #
-'def conectar():
- '   return psycopg2.connect(
-  '      host="db.yovuvhuubopujagvukki.supabase.co",
-   '     database="postgres",
-    '    user="postgres",
-     '   password="sb_publishable_xdViPgvmVxBvpjpNblJg6Q_sMX_QHje",
-      '  port="5432"
-    ')
+#def conectar():
+ #   return psycopg2.connect(
+  #      host="db.yovuvhuubopujagvukki.supabase.co",
+   #      database="postgres",
+    #     user="postgres",
+     #   password="sb_publishable_xdViPgvmVxBvpjpNblJg6Q_sMX_QHje",
+      #  port="5432"
+    #)
 
 url = "https://yovuvhuubopujagvukki.supabase.co/rest/v1/"
 key = "sb_publishable_xdViPgvmVxBvpjpNblJg6Q_sMX_QHje"
