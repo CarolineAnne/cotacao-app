@@ -1,3 +1,4 @@
+# ===================== IMPORTS =====================
 import streamlit as st
 import pandas as pd
 from datetime import datetime
@@ -8,74 +9,32 @@ from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet
 from supabase import create_client
+# ====================================================
 
-# ------------------------------------------ #
-def verificar_login(usuario, senha):
-    conn = conectar()
-    cursor = conn.cursor()
 
-    cursor.execute("""
-        SELECT nome, nivel
-        FROM usuarios
-        WHERE usuario = %s AND senha = %s
-    """, (usuario, senha))
-
-    resultado = cursor.fetchone()
-    conn.close()
-    return resultado
-
-# ------------------ CONEXÃO ------------------ #
-#def conectar():
- #   return psycopg2.connect(
-  #      host="db.yovuvhuubopujagvukki.supabase.co",
-   #      database="postgres",
-    #     user="postgres",
-     #   password="sb_publishable_xdViPgvmVxBvpjpNblJg6Q_sMX_QHje",
-      #  port="5432"
-    #)
-
-url = "https://yovuvhuubopujagvukki.supabase.co/rest/v1/"
+# ================== CONEXÃO =========================
+url = "https://yovuvhuubopujagvukki.supabase.co"
 key = "sb_publishable_xdViPgvmVxBvpjpNblJg6Q_sMX_QHje"
 supabase = create_client(url,key)
+# ====================================================
 
 
-# ------------------ CONFIG ------------------ #
-st.set_page_config(page_title="Sistema de Cotação", layout="wide")
+# ================== VERIFICAR LOGIN =========================
+def verificar_login(usuario, senha):
+
+    resposta = supabase.table("usuarios") \
+        .select("nome, nivel") \
+        .eq("usuario", usuario) \
+        .eq("senha", senha) \
+        .execute()
+
+    if resposta.data:
+        return resposta.data[0]  # retorna dict: {'nome': ..., 'nivel': ...}
+    return None
+# ====================================================
 
 
-# ------------------ ESTADO INICIAL ------------------ #
-if "logado" not in st.session_state:
-    st.session_state.logado = False
-    st.session_state.nome = None
-    st.session_state.nivel = None
-
-
-# ------------------ LOGIN ------------------ #
-if not st.session_state.logado:
-
-    st.title("🔐 Login")
-
-    usuario = st.text_input("Usuário")
-    senha = st.text_input("Senha", type="password")
-
-    if st.button("Entrar"):
-
-        resultado = verificar_login(usuario, senha) # verificar aqui
-
-        if resultado:
-            st.session_state.logado = True
-            st.session_state.nome = resultado[0]
-            st.session_state.nivel = resultado[1]
-
-            st.rerun()
-
-        else:
-            st.error("Usuário ou senha inválidos")
-
-    st.stop()  # 🔴 ESSENCIAL: impede o resto do app rodar
-
-
-# ------------------ GERAR PDF ------------------ #
+# ================== GERAR PDF =========================
 def gerar_pdf(df, nome_pdf):
 
     doc = SimpleDocTemplate(
@@ -103,14 +62,14 @@ def gerar_pdf(df, nome_pdf):
         if dados.empty:
             continue
 
-        # ---------------- DATA ---------------- #
+        # DATA
         if "data" not in dados.columns:
             raise ValueError("Coluna 'data' não encontrada")
 
         data_cotacao = pd.to_datetime(dados["data"].max()).strftime('%d/%m/%Y')
         data_emissao = datetime.now().strftime('%d/%m/%Y')
 
-        # ---------------- LIMPEZA ---------------- #
+        # LIMPEZA
         dados.drop(columns=[col for col in ["id", "classe"] if col in dados.columns], inplace=True)
 
         colunas_ordenadas = [
@@ -121,7 +80,7 @@ def gerar_pdf(df, nome_pdf):
 
         dados = dados[[c for c in colunas_ordenadas if c in dados.columns]]
 
-        # ---------------- NOME COLUNAS ---------------- #
+        # NOME COLUNAS
         dados.rename(columns={
             "produto": "Produto",
             "unidade": "Unidade",
@@ -132,14 +91,14 @@ def gerar_pdf(df, nome_pdf):
             "valor_kg": "Valor/Kg"
         }, inplace=True)
 
-        # ---------------- FORMATAÇÃO ---------------- #
+        # FORMATAÇÃO
         for col in dados.columns:
             if pd.api.types.is_numeric_dtype(dados[col]):
                 dados[col] = dados[col].apply(
                     lambda x: f"{x:.2f}".replace(".", ",") if pd.notnull(x) else ""
                 )
 
-        # ---------------- CABEÇALHO ---------------- #
+        # CABEÇALHO
         estilo_titulo = styles["Title"]
         estilo_sub = styles["Italic"]
 
@@ -147,7 +106,7 @@ def gerar_pdf(df, nome_pdf):
         elementos.append(Paragraph("Relatório de Cotação de Preços", estilo_titulo))
         elementos.append(Spacer(1, 8))
 
-        # ---------------- INFO ---------------- #
+        # INFO
         info = Table([[
             f"Classe: {c}",
             f"Cotação: {data_cotacao}",
@@ -157,7 +116,7 @@ def gerar_pdf(df, nome_pdf):
         elementos.append(info)
         elementos.append(Spacer(1, 10))
 
-        # ---------------- TABELA ---------------- #
+        # TABELA
         tabela = Table(
             [list(dados.columns)] + dados.values.tolist(),
             repeatRows=1
@@ -175,8 +134,20 @@ def gerar_pdf(df, nome_pdf):
         elementos.append(PageBreak())
 
     doc.build(elementos)
+# ====================================================
 
-# ------------------ SESSÃO ------------------ #
+# ================== CONFIG ==========================
+st.set_page_config(page_title="Sistema de Cotação", layout="wide")
+# ====================================================
+
+# ================== ESTADO INICIAL ==========================
+if "logado" not in st.session_state:
+    st.session_state.logado = False
+    st.session_state.nome = None
+    st.session_state.nivel = None
+# ====================================================
+
+# ================== SESSÃO ==========================
 for k in [
     "msg",
     "confirmar_exclusao",
@@ -189,9 +160,34 @@ for k in [
 ]:
     if k not in st.session_state:
         st.session_state[k] = False
+# ====================================================
 
+# ================== LOGIN ==========================
+if not st.session_state.logado:
 
-# ------------------ SISTEMA ------------------ #
+    st.title("🔐 Login")
+
+    usuario = st.text_input("Usuário")
+    senha = st.text_input("Senha", type="password")
+
+    if st.button("Entrar"):
+
+        resultado = verificar_login(usuario, senha)
+
+        if resultado:
+            st.session_state.logado = True
+            st.session_state.nome = resultado["nome"]
+            st.session_state.nivel = resultado["nivel"]
+
+            st.rerun()
+
+        else:
+            st.error("Usuário ou senha inválidos")
+
+    st.stop()  # 🔴 ESSENCIAL: impede o resto do app rodar
+# ====================================================
+
+# ================== SISTEMA ==========================
 if st.session_state.logado:
 
     st.sidebar.title("📌 Menu")
@@ -215,8 +211,11 @@ if st.session_state.logado:
     if st.sidebar.button("🚪 Sair"):
         st.session_state.clear()
         st.rerun()
+# ====================================================
 
-    # ------------------ INÍCIO ------------------ #
+# ================== TELAS ==========================   
+
+    # ================== INÍCIO
     if opcao == "Início":
 
         st.title("📊 Sistema de Cotação")
@@ -226,15 +225,15 @@ if st.session_state.logado:
         st.divider()
 
         # imagem com verificação mais segura
-        import os
         img_path = "home.png"
 
         if os.path.exists(img_path):
             st.image(img_path, use_container_width=True)
         else:
             st.warning("Imagem 'home.png' não encontrada no diretório do projeto.")
+    # =====================
 
-    # ------------------ CADASTRO DE USUÁRIOS ------------------ #
+    # ================== CADASTRO DE USUÁRIOS
     elif opcao == "Cadastro de Usuários":
         st.title("👤 Cadastro de Usuários")
 
@@ -250,37 +249,35 @@ if st.session_state.logado:
         senha = st.text_input("Senha", type="password", key="user_senha")
         nivel = st.selectbox("Nível", ["admin", "cotacao", "visitante"], key="user_nivel")
 
-        # ===================== CADASTRO =====================
+        # CADASTRO
         if st.button("Cadastrar Usuário"):
-            conn = conectar()
-            cursor = conn.cursor()
-    
+
             try:
-                cursor.execute("""
-                    INSERT INTO usuarios (nome, usuario, senha, nivel)
-                    VALUES (%s, %s, %s, %s)
-                """, (nome, usuario, senha, nivel))
-    
-                conn.commit()
+                supabase.table("usuarios").insert({
+                    "nome": nome,
+                    "usuario": usuario,
+                    "senha": senha,
+                    "nivel": nivel
+                }).execute()
+        
                 st.success("Usuário cadastrado com sucesso!")
-    
+        
             except Exception as e:
                 st.error(f"Erro ao cadastrar: {e}")
-    
-            finally:
-                conn.close()
-    
-        st.divider()
 
-        # ===================== LISTAR =====================
-        conn = conectar()
-        df = pd.read_sql_query("SELECT * FROM usuarios", conn)
-        conn.close()
-
-        st.dataframe(df, use_container_width=True)
+        # LISTAR
+        try:
+            response = supabase.table("usuarios").select("*").execute()
+            df = pd.DataFrame(response.data)
+        
+            st.dataframe(df, use_container_width=True)
+        
+        except Exception as e:
+            st.error(f"Erro ao carregar usuários: {e}")
+        
         st.divider()
     
-        # ===================== EDITAR / EXCLUIR =====================
+        # EDITAR / EXCLUIR
         if not df.empty:
     
             st.subheader("✏️ Editar / Excluir Usuário")
@@ -311,58 +308,44 @@ if st.session_state.logado:
     
             col1, col2 = st.columns(2)
 
-            # ===================== ATUALIZAR =====================
+            # ATUALIZAR
             with col1:
                 if st.button("✏️ Atualizar Usuário"):
-    
-                    conn = conectar()
-                    cursor = conn.cursor()
-    
+            
                     try:
-                        cursor.execute("""
-                            UPDATE usuarios
-                            SET nome=%s, usuario=%s, senha=%s, nivel=%s
-                            WHERE id=%s
-                        """, (
-                            novo_nome,
-                            novo_usuario,
-                            nova_senha,
-                            novo_nivel,
-                            int(dados["id"])
-                        ))
-    
-                        conn.commit()
+                        supabase.table("usuarios").update({
+                            "nome": novo_nome,
+                            "usuario": novo_usuario,
+                            "senha": nova_senha,
+                            "nivel": novo_nivel
+                        }).eq("id", int(dados["id"])).execute()
+            
                         st.success("Usuário atualizado!")
-    
+            
                     except Exception as e:
                         st.error(f"Erro ao atualizar: {e}")
-    
-                    finally:
-                        conn.close()
-    
+            
                     st.rerun()
     
-            # ===================== EXCLUIR =====================
+            # EXCLUIR 
             with col2:
                 if st.button("🗑️ Excluir Usuário"):
-    
-                    conn = conectar()
-                    cursor = conn.cursor()
-    
+            
                     try:
-                        cursor.execute("DELETE FROM usuarios WHERE id=%s", (int(dados["id"]),))
-                        conn.commit()
+                        supabase.table("usuarios")\
+                            .delete()\
+                            .eq("id", int(dados["id"]))\
+                            .execute()
+            
                         st.success("Usuário excluído!")
-    
+            
                     except Exception as e:
                         st.error(f"Erro ao excluir: {e}")
-    
-                    finally:
-                        conn.close()
-    
+            
                     st.rerun()
+    # =====================
         
-    # ------------------ CADASTRO DE PRODUTOS ------------------ #
+    # ===================== CADASTRO DE PRODUTOS
     elif opcao == "Cadastro de Produtos":
     
         st.title("📦 Cadastro de Produtos")
@@ -372,7 +355,7 @@ if st.session_state.logado:
             if k not in st.session_state:
                 st.session_state[k] = False
 
-        # ===================== MENSAGEM =====================
+        # MENSAGEM
         if "msg" in st.session_state and st.session_state.msg:
             tipo, texto = st.session_state.msg
             if tipo == "success":
@@ -381,46 +364,44 @@ if st.session_state.logado:
                 st.error(texto)
             st.session_state.msg = None
     
-        # ===================== NOVO PRODUTO =====================
+        # NOVO PRODUTO
         st.subheader("➕ Novo Produto")
-    
+
         nome = st.text_input("Nome")
         classe = st.selectbox("Classe", ["Hortaliças", "Frutas", "Especiarias", "Cereais"])
         unidade = st.selectbox("Unidade", ["Kg", "Cx", "Sc", "Mo-4", "Mo-5", "Lt", "Centro", "Fd"])
         kg = st.number_input("Kg", min_value=0.0)
-    
+        
         if st.button("Cadastrar Produto"):
-    
-            conn = conectar()
-            cursor = conn.cursor()
-    
+        
             try:
-                cursor.execute("""
-                    INSERT INTO produtos (nome, classe, unidade, kg)
-                    VALUES (%s, %s, %s, %s)
-                """, (nome.strip(), classe, unidade, kg))
-    
-                conn.commit()
+                supabase.table("produtos").insert({
+                    "nome": nome.strip(),
+                    "classe": classe,
+                    "unidade": unidade,
+                    "kg": kg
+                }).execute()
+        
                 st.session_state.msg = ("success", "Produto cadastrado!")
-    
+        
             except Exception:
                 st.session_state.msg = ("error", "Produto já existe!")
-    
-            finally:
-                conn.close()
-    
+        
         st.divider()
     
-        # ===================== LISTAR =====================
-        conn = conectar()
-        df = pd.read_sql_query("SELECT * FROM produtos", conn)
-        conn.close()
-    
-        st.dataframe(df, use_container_width=True)
-    
+        # LISTAR
+        try:
+            response = supabase.table("produtos").select("*").execute()
+            df = pd.DataFrame(response.data)
+        
+            st.dataframe(df, use_container_width=True)
+        
+        except Exception as e:
+            st.error(f"Erro ao carregar produtos: {e}")
+        
         st.divider()
     
-        # ===================== EDITAR / EXCLUIR =====================
+        # EDITAR / EXCLUIR
         if not df.empty:
     
             st.subheader("✏️ Editar / Excluir")
@@ -448,58 +429,44 @@ if st.session_state.logado:
     
             col1, col2 = st.columns(2)
     
-            # ===================== UPDATE =====================
+            # UPDATE
             with col1:
                 if st.button("✏️ Atualizar"):
-    
-                    conn = conectar()
-                    cursor = conn.cursor()
-    
+            
                     try:
-                        cursor.execute("""
-                            UPDATE produtos
-                            SET nome=%s, classe=%s, unidade=%s, kg=%s
-                            WHERE id=%s
-                        """, (
-                            novo_nome,
-                            nova_classe,
-                            nova_unidade,
-                            novo_kg,
-                            int(dados["id"])
-                        ))
-    
-                        conn.commit()
+                        supabase.table("produtos").update({
+                            "nome": novo_nome,
+                            "classe": nova_classe,
+                            "unidade": nova_unidade,
+                            "kg": novo_kg
+                        }).eq("id", int(dados["id"])).execute()
+            
                         st.session_state.msg = ("success", "Produto atualizado!")
-    
+            
                     except Exception as e:
                         st.session_state.msg = ("error", str(e))
-    
-                    finally:
-                        conn.close()
-    
+            
                     st.rerun()
     
-            # ===================== DELETE =====================
+            # DELETE
             with col2:
                 if st.button("🗑️ Excluir"):
-    
-                    conn = conectar()
-                    cursor = conn.cursor()
-    
+            
                     try:
-                        cursor.execute("DELETE FROM produtos WHERE id=%s", (int(dados["id"]),))
-                        conn.commit()
+                        supabase.table("produtos")\
+                            .delete()\
+                            .eq("id", int(dados["id"]))\
+                            .execute()
+            
                         st.session_state.msg = ("success", "Produto excluído!")
-    
+            
                     except Exception as e:
                         st.session_state.msg = ("error", str(e))
-    
-                    finally:
-                        conn.close()
-    
+            
                     st.rerun()
+    # =====================
 
-    # ------------------ COTAÇÃO ------------------ #
+    # ===================== COTAÇÃO
     elif opcao == "Cotação do Dia":
 
         st.title("📊 Cotação do Dia")
@@ -507,39 +474,49 @@ if st.session_state.logado:
         # garante session_state
         if "confirmar_cotacao" not in st.session_state:
             st.session_state.confirmar_cotacao = False
-
+        
         data = st.date_input("Data", value=pd.to_datetime("today"))
-
-        conn = conectar()
-        produtos = pd.read_sql_query("SELECT * FROM produtos", conn)
-
+        
+        # PRODUTOS
+        try:
+            resp = supabase.table("produtos").select("*").execute()
+            produtos = pd.DataFrame(resp.data)
+        except Exception as e:
+            st.error(f"Erro ao carregar produtos: {e}")
+            st.stop()
+        
         if produtos.empty:
             st.warning("Cadastre produtos primeiro!")
-            conn.close()
             st.stop()
-
+        
         cotacoes = []
-
+        
         for _, row in produtos.iterrows():
             produto = row["nome"]
-
-            ultima = pd.read_sql_query("""
-                SELECT preco_min, preco_max, valor_kg
-                FROM cotacoes
-                WHERE produto = %s
-                ORDER BY data DESC
-                LIMIT 1
-            """, conn, params=(produto,))
-
+        
+            # ÚLTIMA COTAÇÃO
+            try:
+                resp = supabase.table("cotacoes")\
+                    .select("preco_min, preco_max, valor_kg")\
+                    .eq("produto", produto)\
+                    .order("data", desc=True)\
+                    .limit(1)\
+                    .execute()
+        
+                ultima = pd.DataFrame(resp.data)
+        
+            except Exception:
+                ultima = pd.DataFrame()
+        
             col1, col2 = st.columns([1, 2])
-
+        
             with col1:
                 st.write(produto)
-
+        
             with col2:
-
+        
                 key = f"precos_{produto}"
-
+        
                 if key not in st.session_state:
                     if not ultima.empty:
                         st.session_state[key] = [
@@ -548,21 +525,21 @@ if st.session_state.logado:
                         ]
                     else:
                         st.session_state[key] = []
-
+        
                 precos = st.session_state[key]
-
+        
                 b1, b2 = st.columns(2)
-
+        
                 with b1:
                     if st.button("➕ Adicionar", key=f"add_{produto}"):
                         precos.append(0.0)
-
+        
                 with b2:
                     if precos and st.button("➖ Remover", key=f"rem_{produto}"):
                         precos.pop()
-
+        
                 cols = st.columns(3)
-
+        
                 for i in range(len(precos)):
                     with cols[i % 3]:
                         precos[i] = st.number_input(
@@ -570,36 +547,35 @@ if st.session_state.logado:
                             value=precos[i],
                             key=f"{produto}_{i}"
                         )
-
+        
                 precos_validos = [p for p in precos if p > 0]
-
+        
                 if precos_validos:
                     pmin = min(precos_validos)
                     pmax = max(precos_validos)
                     preco_medio = sum(precos_validos) / len(precos_validos)
                 else:
                     pmin = pmax = preco_medio = 0
-
+        
                 valor_kg = (preco_medio / row["kg"]) if row["kg"] > 0 else 0
-
+        
                 st.caption(
                     f"🔽 Mín: {pmin:.2f} | 🔼 Máx: {pmax:.2f} | 📊 Médio: {preco_medio:.2f} | ⚖️ Kg: {valor_kg:.2f}"
                 )
-
+        
                 if not ultima.empty:
                     valor_kg_anterior = float(ultima.iloc[0]["valor_kg"])
-
+        
                     if valor_kg_anterior > 0:
                         variacao = ((valor_kg - valor_kg_anterior) / valor_kg_anterior) * 100
-
+        
                         if abs(variacao) > 30:
                             st.warning(f"⚠️ Variação alta: {variacao:.1f}%")
-
+        
             st.divider()
-
+        
             cotacoes.append((produto, row["classe"], row["unidade"], row["kg"], pmin, pmax))
-
-        # ===================== SALVAR =====================
+        # SALVAR
         if not st.session_state.confirmar_cotacao:
     
             if st.button("💾 Salvar Cotação"):
@@ -646,25 +622,30 @@ if st.session_state.logado:
                     st.session_state.confirmar_cotacao = False
     
         conn.close()
+    # =====================
 
-   # ------------------ VISUALIZAR DADOS ------------------ #
+   # ===================== VISUALIZAR DADOS 
     elif opcao == "Visualizar Dados":
-    
+
         st.title("📋 Cotações")
     
-        conn = conectar()
-        df = pd.read_sql_query("SELECT * FROM cotacoes", conn)
-        conn.close()
+        try:
+            resp = supabase.table("cotacoes").select("*").execute()
+            df = pd.DataFrame(resp.data)
+    
+        except Exception as e:
+            st.error(f"Erro ao carregar dados: {e}")
+            st.stop()
     
         if df.empty:
             st.warning("Sem dados")
             st.stop()
     
-        # ===================== TRATAMENTO DE DATA =====================
+        # TRATAMENTO DE DATA
         df["data"] = pd.to_datetime(df["data"], errors="coerce")
         df = df.dropna(subset=["data"])
     
-        # ===================== FILTROS =====================
+        # FILTROS
         col1, col2, col3 = st.columns(3)
     
         with col1:
@@ -683,7 +664,7 @@ if st.session_state.logado:
                 ["Todas", "Hortaliças", "Frutas", "Especiarias", "Cereais"]
             )
     
-        # ===================== FILTRO =====================
+        # FILTRO
         df_filtrado = df[
             (df["data"] >= data_inicio) &
             (df["data"] <= data_fim)
@@ -692,13 +673,13 @@ if st.session_state.logado:
         if classe != "Todas":
             df_filtrado = df_filtrado[df_filtrado["classe"] == classe]
     
-        # ===================== TABELA =====================
+        # TABELA
         cols_drop = [c for c in ["id"] if c in df_filtrado.columns]
         df_tabela = df_filtrado.drop(columns=cols_drop).round(2)
     
         st.dataframe(df_tabela, use_container_width=True)
     
-        # ===================== PDF =====================
+        # PDF
         if st.button("📄 Gerar PDF"):
     
             try:
@@ -710,7 +691,7 @@ if st.session_state.logado:
             except Exception as e:
                 st.error(f"Erro ao gerar PDF: {e}")
     
-        # ===================== EXCEL =====================
+        # EXCEL
         if st.session_state.get("nivel") == "admin":
     
             try:
@@ -727,16 +708,11 @@ if st.session_state.logado:
             except Exception as e:
                 st.error(f"Erro ao gerar Excel: {e}")
     
-        # ===================== DOWNLOAD PDF =====================
-        if st.session_state.get("pdf_gerado"):
-    
-            try:
-                with open(st.session_state["pdf_gerado"], "rb") as f:
-                    st.download_button(
-                        "📥 Baixar PDF",
-                        f,
-                        file_name=st.session_state["pdf_gerado"]
-                    )
-    
-            except FileNotFoundError:
-                st.warning("PDF não encontrado. Gere novamente.")
+        # DOWNLOAD PDF
+        if st.session_state.get("pdf_bytes"):
+
+            st.download_button(
+                "📥 Baixar PDF",
+                st.session_state["pdf_bytes"],
+                file_name=f"cotacoes_{datetime.now().strftime('%d-%m-%Y')}.pdf"
+            )
