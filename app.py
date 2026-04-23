@@ -1,42 +1,82 @@
 import streamlit as st
-import sqlite3
 import pandas as pd
 from datetime import datetime
 import io
 import psycopg2
-import streamlit as st
-from supabase import create_client
-
-# ------------------ CONEXÃO ------------------ #
-url = "https://yovuvhuubopujagvukki.supabase.co/rest/v1/"
-key = "sb_publishable_xdViPgvmVxBvpjpNblJg6Q_sMX_QHje"
-supabase = create_client(url,key)
-
-# ------------------ LOGIN ------------------ #
-def verificar_login(usuario, senha):
-    conn = conectar()
-    cursor = conn.cursor()
-
-    try:
-        cursor.execute("""
-            SELECT nome, nivel FROM usuarios
-            WHERE usuario = %s AND senha = %s
-        """, (usuario, senha))
-
-        resultado = cursor.fetchone()
-        return resultado
-
-    finally:
-        conn.close()
-
-# ------------------ GERAR PDF ------------------ #
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet
-from datetime import datetime
 
+# ------------------------------------------ #
+def verificar_login(usuario, senha):
+    conn = conectar()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT nome, nivel
+        FROM usuarios
+        WHERE usuario = %s AND senha = %s
+    """, (usuario, senha))
+
+    resultado = cursor.fetchone()
+    conn.close()
+    return resultado
+
+# ------------------ CONEXÃO ------------------ #
+def conectar():
+    return psycopg2.connect(
+        host="db.yovuvhuubopujagvukki.supabase.co",
+        database="postgres",
+        user="postgres",
+        password="sb_publishable_xdViPgvmVxBvpjpNblJg6Q_sMX_QHje",
+        port="5432"
+    )
+
+#url = "https://yovuvhuubopujagvukki.supabase.co/rest/v1/"
+#key = "sb_publishable_xdViPgvmVxBvpjpNblJg6Q_sMX_QHje"
+#supabase = create_client(url,key)
+
+
+# ------------------ CONFIG ------------------ #
+st.set_page_config(page_title="Sistema de Cotação", layout="wide")
+
+
+# ------------------ ESTADO INICIAL ------------------ #
+if "logado" not in st.session_state:
+    st.session_state.logado = False
+    st.session_state.nome = None
+    st.session_state.nivel = None
+
+
+# ------------------ LOGIN ------------------ #
+if not st.session_state.logado:
+
+    st.title("🔐 Login")
+
+    usuario = st.text_input("Usuário")
+    senha = st.text_input("Senha", type="password")
+
+    if st.button("Entrar"):
+
+        resultado = verificar_login(usuario, senha) # verificar aqui
+
+        if resultado:
+            st.session_state.logado = True
+            st.session_state.nome = resultado[0]
+            st.session_state.nivel = resultado[1]
+
+            st.rerun()
+
+        else:
+            st.error("Usuário ou senha inválidos")
+
+    st.stop()  # 🔴 ESSENCIAL: impede o resto do app rodar
+
+
+# ------------------ GERAR PDF ------------------ #
 def gerar_pdf(df, nome_pdf):
+
     doc = SimpleDocTemplate(
         nome_pdf,
         pagesize=A4,
@@ -44,46 +84,44 @@ def gerar_pdf(df, nome_pdf):
         rightMargin=10,
         topMargin=5,
         bottomMargin=5
-    )   
+    )
+
     styles = getSampleStyleSheet()
     elementos = []
+
+    # garante que existe coluna classe
+    if "classe" not in df.columns:
+        raise ValueError("Coluna 'classe' não encontrada")
 
     classes = df["classe"].unique()
 
     for c in classes:
-        dados_classe = df[df["classe"] == c]
 
-        # 🔹 evita erro se não tiver dados
-        if dados_classe.empty:
+        dados = df[df["classe"] == c].copy()
+
+        if dados.empty:
             continue
 
-        # 🔹 PEGA A DATA DA COTAÇÃO (ANTES DE QUALQUER ALTERAÇÃO)
-        if "data" not in dados_classe.columns:
-            raise ValueError("Coluna 'data' não encontrada para gerar o PDF.")
+        # ---------------- DATA ---------------- #
+        if "data" not in dados.columns:
+            raise ValueError("Coluna 'data' não encontrada")
 
-        data_ref = dados_classe["data"].max()
-        data_cotacao = pd.to_datetime(data_ref).strftime('%d/%m/%Y')
-        
-        # 🔹 REMOVE COLUNAS DESNECESSÁRIAS
-        colunas_remover = [col for col in ["classe", "id"] if col in dados_classe.columns]
-        dados_classe = dados_classe.drop(columns=colunas_remover)
+        data_cotacao = pd.to_datetime(dados["data"].max()).strftime('%d/%m/%Y')
+        data_emissao = datetime.now().strftime('%d/%m/%Y')
 
-        # 🔹 DEFINE ORDEM DAS COLUNAS (IMPORTANTE PRA NÃO BAGUNÇAR)
-        colunas_ordem = [
-            "produto",
-            "unidade",
-            "kg",
-            "preco_min",
-            "preco_max",
-            "preco_medio",
-            "valor_kg"
+        # ---------------- LIMPEZA ---------------- #
+        dados.drop(columns=[col for col in ["id", "classe"] if col in dados.columns], inplace=True)
+
+        colunas_ordenadas = [
+            "produto", "unidade", "kg",
+            "preco_min", "preco_max",
+            "preco_medio", "valor_kg"
         ]
 
-        colunas_existentes = [col for col in colunas_ordem if col in dados_classe.columns]
-        dados_classe = dados_classe[colunas_existentes]
+        dados = dados[[c for c in colunas_ordenadas if c in dados.columns]]
 
-        # 🔹 RENOMEIA COLUNAS (CABEÇALHO BONITO NO PDF)
-        nomes_colunas = {
+        # ---------------- NOME COLUNAS ---------------- #
+        dados.rename(columns={
             "produto": "Produto",
             "unidade": "Unidade",
             "kg": "Kg",
@@ -91,205 +129,87 @@ def gerar_pdf(df, nome_pdf):
             "preco_max": "Preço Máx",
             "preco_medio": "Preço Médio",
             "valor_kg": "Valor/Kg"
-        }
+        }, inplace=True)
 
-        dados_classe = dados_classe.rename(columns=nomes_colunas)
-
-        # 🔹 FORMATA NÚMEROS (2 CASAS DECIMAIS + VÍRGULA)
-        for col in dados_classe.columns:
-            if pd.api.types.is_numeric_dtype(dados_classe[col]):
-                dados_classe[col] = dados_classe[col].apply(
+        # ---------------- FORMATAÇÃO ---------------- #
+        for col in dados.columns:
+            if pd.api.types.is_numeric_dtype(dados[col]):
+                dados[col] = dados[col].apply(
                     lambda x: f"{x:.2f}".replace(".", ",") if pd.notnull(x) else ""
                 )
 
-        tabela_dados = [list(dados_classe.columns)] + dados_classe.values.tolist()
+        # ---------------- CABEÇALHO ---------------- #
+        estilo_titulo = styles["Title"]
+        estilo_sub = styles["Italic"]
 
-        # -------- CABEÇALHO -------- #
-        try:
-            from reportlab.platypus import Image
-            logo = Image("logo.png", width=60, height=40)
-            elementos.append(logo)
-        except:
-            pass  # se não encontrar o logo, não quebra o sistema
-
-        from reportlab.lib.enums import TA_CENTER
-
-        # Estilos centralizados
-        estilo_titulo = styles["Title"].clone('titulo_centro')
-        estilo_titulo.alignment = TA_CENTER
-        estilo_titulo.fontSize = 14   # título principal
-        estilo_titulo.leading = 12
-        estilo_titulo.spaceAfter = 4
-        estilo_titulo.spaceBefore = 6
-
-        estilo_sub = styles["Italic"].clone('sub_centro')
-        estilo_sub.alignment = TA_CENTER
-        estilo_sub.fontSize = 8   # título principal
-        estilo_sub.leading = 8  # padrão é maior → diminui aqui
-        estilo_sub.spaceAfter = 2
-        estilo_sub.spaceBefore = 0
-
-        # -------- TÍTULOS CENTRALIZADOS -------- #
         elementos.append(Paragraph("AMA - Autarquia Municipal de Abastecimento", estilo_sub))
-        elementos.append(Paragraph("Diretor Executivo: Celso Candido Almeida Leal", estilo_sub))
         elementos.append(Paragraph("Relatório de Cotação de Preços", estilo_titulo))
-        elementos.append(Spacer(1, 6))
+        elementos.append(Spacer(1, 8))
 
-        # -------- CLASSE E DATA LADO A LADO -------- #
-        from reportlab.platypus import Table
-
-        # 🔹 DATA DE EMISSÃO (momento do PDF)
-        data_emissao = datetime.now().strftime('%d/%m/%Y')
-
-        # 🔹 LINHA DE INFORMAÇÕES
-        info_dados = [[
+        # ---------------- INFO ---------------- #
+        info = Table([[
             f"Classe: {c}",
-            f"Data de Cotação: {data_cotacao}",
-            f"Data de emissão: {data_emissao}"
-        ]]
+            f"Cotação: {data_cotacao}",
+            f"Emissão: {data_emissao}"
+        ]], colWidths=[150, 150, 150])
 
-        info_tabela = Table(info_dados, colWidths=[145, 145, 145]) # criação da tabela e definição da largura das colunas
-        info_tabela.setStyle([
-            ("ALIGN", (0,0), (-1,-1), "CENTER"),
-            ("VALIGN", (0,0), (-1,-1), "MIDDLE"),
+        elementos.append(info)
+        elementos.append(Spacer(1, 10))
 
-            # 🔹 REMOVE NEGRITO
-            ("FONTNAME", (0,0), (-1,-1), "Helvetica"),
-
-            # 🔹 FONTE MENOR
-            ("FONTSIZE", (0,0), (-1,-1), 7),
-
-            # 🔹 MENOS ESPAÇO (mais compacto)
-            ('TOPPADDING', (0,0), (-1,-1), 2),
-            ('BOTTOMPADDING', (0,0), (-1,-1), 1),
-        ])
-
-        elementos.append(info_tabela)
-        elementos.append(Spacer(1, 6))
-
-         # 🔹 REMOVE DATA DA TABELA (para não aparecer na tabela)
-        if "data" in dados_classe.columns:
-            dados_classe = dados_classe.drop(columns=["data"])
-
-        # -------- TABELA -------- #
-        tabela_dados = [list(dados_classe.columns)] + dados_classe.values.tolist()
-
+        # ---------------- TABELA ---------------- #
         tabela = Table(
-            tabela_dados,
-            colWidths=[120, 40, 30, 50, 50, 60, 50], # largura da tabela
-            rowHeights=11, # altura da tabela
+            [list(dados.columns)] + dados.values.tolist(),
             repeatRows=1
         )
 
-        tabela.setStyle(TableStyle([
-            ('BACKGROUND', (0,0), (-1,0), colors.darkgreen),
-            ('TEXTCOLOR',(0,0),(-1,0),colors.white),
-
-            # 🔹 ALINHAMENTO HORIZONTAL
-            ('ALIGN', (0,0), (-1,0), 'CENTER'),     # cabeçalho
-            ('ALIGN', (0,1), (1,-1), 'LEFT'),       # produto
-            ('ALIGN', (2,1), (-1,-1), 'RIGHT'),     # números
-
-            # 🔹 ALINHAMENTO VERTICAL (UMA ÚNICA REGRA)
-            ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
-
-            ('FONTNAME', (0,0),(-1,0),'Helvetica-Bold'),
-
-            # LLINHAS FINAS
-            ('GRID', (0,0), (-1,-1), 0.1, colors.grey),
-            
-            ('BACKGROUND', (0,1), (-1,-1), colors.whitesmoke),
-
-            # 🔹 MELHORIA DE ESPAÇAMENTO (opcional, mas recomendado)
-            ('LEFTPADDING', (0,0), (-1,-1), 2),
-            ('RIGHTPADDING', (0,0), (-1,-1), 2),
-            ('TOPPADDING', (0,0), (-1,-1), 2),
-            ('BOTTOMPADDING', (0,0), (-1,-1), 2),
-            
-            # tamanho da fonte
-            ('FONTSIZE', (0,0), (-1,0), 8),
-            ('FONTSIZE', (0,1), (-1,-1), 7), 
-        ]))
-
-        tabela.hAlign = 'CENTER'
+        tabela.setStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), colors.darkgreen),
+            ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+            ("GRID", (0, 0), (-1, -1), 0.3, colors.grey),
+            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ("ALIGN", (0, 0), (-1, 0), "CENTER"),
+        ])
 
         elementos.append(tabela)
-        elementos.append(Spacer(1, 8))
-
-        # -------- RODAPÉ -------- #
-        elementos.append(Paragraph("Grace Kelly Rodrigues da Silva Santos", estilo_sub))
-        elementos.append(Paragraph("Supervisor de Estatística, Pesquisa e Controle de Qualidade", estilo_sub))
-
-        # Nova página para próxima classe
         elementos.append(PageBreak())
 
     doc.build(elementos)
 
-# ------------------ CONFIG ------------------ #
-st.set_page_config(page_title="Sistema de Cotação", layout="wide")
-
 # ------------------ SESSÃO ------------------ #
-if "logado" not in st.session_state:
-    st.session_state.logado = False
+for k in [
+    "msg",
+    "confirmar_exclusao",
+    "confirmar_edicao",
+    "confirmar_cotacao",
+    "confirmar_usuario",
+    "confirmar_edicao_usuario",
+    "confirmar_exclusao_usuario",
+    "confirmar_cadastro_produto"
+]:
+    if k not in st.session_state:
+        st.session_state[k] = False
 
-if "msg" not in st.session_state:
-    st.session_state.msg = None
-
-if "confirmar_exclusao" not in st.session_state:
-    st.session_state.confirmar_exclusao = False
-
-if "confirmar_edicao" not in st.session_state:
-    st.session_state.confirmar_edicao = False
-
-if "confirmar_cotacao" not in st.session_state:
-    st.session_state.confirmar_cotacao = False
-
-if "confirmar_usuario" not in st.session_state:
-    st.session_state.confirmar_usuario = False
-
-if "confirmar_edicao_usuario" not in st.session_state:
-    st.session_state.confirmar_edicao_usuario = False
-
-if "confirmar_exclusao_usuario" not in st.session_state:
-    st.session_state.confirmar_exclusao_usuario = False
-
-if "confirmar_cadastro_produto" not in st.session_state:
-    st.session_state.confirmar_cadastro_produto = False
-
-# ------------------ LOGIN ------------------ #
-if not st.session_state.logado:
-
-    st.title("🔐 Login do Sistema")
-
-    usuario = st.text_input("Usuário")
-    senha = st.text_input("Senha", type="password")
-
-    if st.button("Entrar"):
-        resultado = verificar_login(usuario, senha)
-
-        if resultado:
-            st.session_state.logado = True
-            st.session_state.nome = resultado[0]
-            st.session_state.nivel = resultado[1]
-            st.rerun()
-        else:
-            st.error("Usuário ou senha inválidos")
 
 # ------------------ SISTEMA ------------------ #
-else:
+if st.session_state.logado:
+
     st.sidebar.title("📌 Menu")
 
-    if st.session_state.nivel == "admin":
+    nivel = st.session_state.get("nivel", "")
+
+    if nivel == "admin":
         menu = ["Início", "Cadastro de Usuários", "Cadastro de Produtos", "Cotação do Dia", "Visualizar Dados"]
-    elif st.session_state.nivel == "cotacao":
+
+    elif nivel == "cotacao":
         menu = ["Início", "Cotação do Dia", "Visualizar Dados"]
+
     else:
         menu = ["Início", "Visualizar Dados"]
 
-    opcao = st.sidebar.selectbox("Escolha uma opção:", menu)
+    opcao = st.sidebar.selectbox("Opções", menu)
 
-    st.sidebar.write(f"👤 {st.session_state.nome}")
-    st.sidebar.write(f"🔑 {st.session_state.nivel}")
+    st.sidebar.write(f"👤 {st.session_state.get('nome', '')}")
+    st.sidebar.write(f"🔑 {nivel}")
 
     if st.sidebar.button("🚪 Sair"):
         st.session_state.clear()
@@ -299,359 +219,372 @@ else:
     if opcao == "Início":
 
         st.title("📊 Sistema de Cotação")
-        st.markdown("### Bem-vindo ao sistema")
-        st.markdown(
-            "<small><i>Utilize o menu lateral para navegar pelas funcionalidades.</i></small>",
-            unsafe_allow_html=True
-        )
-    
-        st.image("home.png", use_container_width=True)
+        st.caption("Utilize o menu lateral para navegar pelas funcionalidades.")
+
+        # espaço visual
+        st.divider()
+
+        # imagem com verificação mais segura
+        import os
+        img_path = "home.png"
+
+        if os.path.exists(img_path):
+            st.image(img_path, use_container_width=True)
+        else:
+            st.warning("Imagem 'home.png' não encontrada no diretório do projeto.")
 
     # ------------------ CADASTRO DE USUÁRIOS ------------------ #
     elif opcao == "Cadastro de Usuários":
         st.title("👤 Cadastro de Usuários")
 
-        conn = conectar()
-
+        # garante states
+        for k in ["confirmar_usuario", "confirmar_edicao_usuario", "confirmar_exclusao_usuario"]:
+            if k not in st.session_state:
+                st.session_state[k] = False
+    
         st.subheader("➕ Novo Usuário")
-
+    
         nome = st.text_input("Nome", key="user_nome")
         usuario = st.text_input("Usuário", key="user_usuario")
         senha = st.text_input("Senha", type="password", key="user_senha")
         nivel = st.selectbox("Nível", ["admin", "cotacao", "visitante"], key="user_nivel")
 
-        if not st.session_state.confirmar_usuario:
-            if st.button("Cadastrar Usuário"):
-                st.session_state.confirmar_usuario = True
-        else:
-            st.warning("Confirmar cadastro do usuário?")
-            c1, c2 = st.columns(2)
-
-            with c1:
-                if st.button("✅ Confirmar Cadastro"):
-                    try:
-                        conn.execute("""
-                            INSERT INTO usuarios (nome, usuario, senha, nivel)
-                            VALUES (?, ?, ?, ?)
-                        """, (nome.strip(), usuario.strip(), senha, nivel))
-                        conn.commit()
-
-                        st.success("Usuário cadastrado com sucesso!")
-                        st.session_state.confirmar_usuario = False
-                        st.rerun()
-
-                    except sqlite3.IntegrityError:
-                        st.error("Usuário já existe!")
-                        st.session_state.confirmar_usuario = False
-
-            with c2:
-                if st.button("❌ Cancelar Cadastro"):
-                    st.session_state.confirmar_usuario = False
-
-        st.divider()
-
-        df = pd.read_sql_query("SELECT * FROM usuarios", conn)
-        st.dataframe(df, use_container_width=True)
-
-        st.divider()
-
-        if not df.empty:
-            st.subheader("✏️ Editar / Excluir Usuário")
-
-            usuario_sel = st.selectbox("Selecione o usuário", df["usuario"], key="select_user")
-            dados = df[df["usuario"] == usuario_sel].iloc[0]
-
-            if "usuario_anterior" not in st.session_state:
-                st.session_state.usuario_anterior = None
-
-            if st.session_state.usuario_anterior != usuario_sel:
-                st.session_state.edit_user_nome = dados["nome"]
-                st.session_state.edit_user_usuario = dados["usuario"]
-                st.session_state.edit_user_senha = dados["senha"]
-                st.session_state.edit_user_nivel = dados["nivel"]
-                st.session_state.usuario_anterior = usuario_sel
-
-            novo_nome = st.text_input("Nome", key="edit_user_nome")
-            novo_usuario = st.text_input("Usuário", key="edit_user_usuario")
-            nova_senha = st.text_input("Senha", key="edit_user_senha")
-
-            novo_nivel = st.selectbox(
-                "Nível",
-                ["admin", "cotacao", "visitante"],
-                index=["admin", "cotacao", "visitante"].index(st.session_state.edit_user_nivel),
-                key="edit_user_nivel"
-            )
-
-            col1, col2 = st.columns(2)
-
-            with col1:
-                if not st.session_state.confirmar_edicao_usuario:
-                    if st.button("✏️ Atualizar Usuário"):
-                        st.session_state.confirmar_edicao_usuario = True
-                else:
-                    st.warning("Confirmar atualização?")
-                    c1, c2 = st.columns(2)
-
-                    with c1:
-                        if st.button("✅ Confirmar Atualização"):
-                            conn.execute("""
-                                UPDATE usuarios
-                                SET nome=?, usuario=?, senha=?, nivel=?
-                                WHERE id=?
-                            """, (
-                                novo_nome,
-                                novo_usuario,
-                                nova_senha,
-                                novo_nivel,
-                                int(dados["id"])
-                            ))
-                            conn.commit()
-                            st.success("Usuário atualizado!")
-                            st.session_state.confirmar_edicao_usuario = False
-                            st.rerun()
-
-                    with c2:
-                        if st.button("❌ Cancelar Atualização"):
-                            st.session_state.confirmar_edicao_usuario = False
-
-            with col2:
-                if not st.session_state.confirmar_exclusao_usuario:
-                    if st.button("🗑️ Excluir Usuário"):
-                        st.session_state.confirmar_exclusao_usuario = True
-                else:
-                    st.warning("Confirmar exclusão?")
-                    c1, c2 = st.columns(2)
-
-                    with c1:
-                        if st.button("✅ Confirmar Exclusão"):
-                            conn.execute("DELETE FROM usuarios WHERE id=?", (int(dados["id"]),))
-                            conn.commit()
-                            st.success("Usuário excluído!")
-                            st.session_state.confirmar_exclusao_usuario = False
-                            st.rerun()
-
-                    with c2:
-                        if st.button("❌ Cancelar Exclusão"):
-                            st.session_state.confirmar_exclusao_usuario = False
-
-        conn.close()
+        # ===================== CADASTRO =====================
+        if st.button("Cadastrar Usuário"):
+            conn = conectar()
+            cursor = conn.cursor()
     
+            try:
+                cursor.execute("""
+                    INSERT INTO usuarios (nome, usuario, senha, nivel)
+                    VALUES (%s, %s, %s, %s)
+                """, (nome, usuario, senha, nivel))
+    
+                conn.commit()
+                st.success("Usuário cadastrado com sucesso!")
+    
+            except Exception as e:
+                st.error(f"Erro ao cadastrar: {e}")
+    
+            finally:
+                conn.close()
+    
+        st.divider()
+
+        # ===================== LISTAR =====================
+        conn = conectar()
+        df = pd.read_sql_query("SELECT * FROM usuarios", conn)
+        conn.close()
+
+        st.dataframe(df, use_container_width=True)
+        st.divider()
+    
+            # ===================== EDITAR / EXCLUIR =====================
+            if not df.empty:
+        
+                st.subheader("✏️ Editar / Excluir Usuário")
+        
+                usuario_sel = st.selectbox("Selecione o usuário", df["usuario"], key="select_user")
+                dados = df[df["usuario"] == usuario_sel].iloc[0]
+        
+                if "usuario_anterior" not in st.session_state:
+                    st.session_state.usuario_anterior = None
+        
+                if st.session_state.usuario_anterior != usuario_sel:
+                    st.session_state.edit_user_nome = dados["nome"]
+                    st.session_state.edit_user_usuario = dados["usuario"]
+                    st.session_state.edit_user_senha = dados["senha"]
+                    st.session_state.edit_user_nivel = dados["nivel"]
+                    st.session_state.usuario_anterior = usuario_sel
+        
+                novo_nome = st.text_input("Nome", key="edit_user_nome")
+                novo_usuario = st.text_input("Usuário", key="edit_user_usuario")
+                nova_senha = st.text_input("Senha", key="edit_user_senha")
+        
+                novo_nivel = st.selectbox(
+                    "Nível",
+                    ["admin", "cotacao", "visitante"],
+                    index=["admin", "cotacao", "visitante"].index(st.session_state.edit_user_nivel),
+                    key="edit_user_nivel"
+                )
+        
+                col1, col2 = st.columns(2)
+
+            # ===================== ATUALIZAR =====================
+            with col1:
+                if st.button("✏️ Atualizar Usuário"):
+    
+                    conn = conectar()
+                    cursor = conn.cursor()
+    
+                    try:
+                        cursor.execute("""
+                            UPDATE usuarios
+                            SET nome=%s, usuario=%s, senha=%s, nivel=%s
+                            WHERE id=%s
+                        """, (
+                            novo_nome,
+                            novo_usuario,
+                            nova_senha,
+                            novo_nivel,
+                            int(dados["id"])
+                        ))
+    
+                        conn.commit()
+                        st.success("Usuário atualizado!")
+    
+                    except Exception as e:
+                        st.error(f"Erro ao atualizar: {e}")
+    
+                    finally:
+                        conn.close()
+    
+                    st.rerun()
+    
+            # ===================== EXCLUIR =====================
+            with col2:
+                if st.button("🗑️ Excluir Usuário"):
+    
+                    conn = conectar()
+                    cursor = conn.cursor()
+    
+                    try:
+                        cursor.execute("DELETE FROM usuarios WHERE id=%s", (int(dados["id"]),))
+                        conn.commit()
+                        st.success("Usuário excluído!")
+    
+                    except Exception as e:
+                        st.error(f"Erro ao excluir: {e}")
+    
+                    finally:
+                        conn.close()
+    
+                    st.rerun()
+        
     # ------------------ CADASTRO DE PRODUTOS ------------------ #
     elif opcao == "Cadastro de Produtos":
+    
         st.title("📦 Cadastro de Produtos")
+    
+        # garante session_state
+        for k in ["confirmar_cadastro_produto", "confirmar_edicao", "confirmar_exclusao"]:
+            if k not in st.session_state:
+                st.session_state[k] = False
 
-        conn = conectar()
-
-        if st.session_state.msg:
+        # ===================== MENSAGEM =====================
+        if "msg" in st.session_state and st.session_state.msg:
             tipo, texto = st.session_state.msg
             if tipo == "success":
                 st.success(texto)
             else:
                 st.error(texto)
             st.session_state.msg = None
-
+    
+        # ===================== NOVO PRODUTO =====================
         st.subheader("➕ Novo Produto")
-
+    
         nome = st.text_input("Nome")
         classe = st.selectbox("Classe", ["Hortaliças", "Frutas", "Especiarias", "Cereais"])
         unidade = st.selectbox("Unidade", ["Kg", "Cx", "Sc", "Mo-4", "Mo-5", "Lt", "Centro", "Fd"])
         kg = st.number_input("Kg", min_value=0.0)
-
-        # -------- CONFIRMAR CADASTRO DE PRODUTO -------- #
-        if not st.session_state.confirmar_cadastro_produto:
-            if st.button("Cadastrar Produto"):
-                st.session_state.confirmar_cadastro_produto = True
-        else:
-            st.warning("Confirmar cadastro do produto?")
-            c1, c2 = st.columns(2)
-
-            with c1:
-                if st.button("✅ Confirmar Produto"):
-                    try:
-                        conn.execute("""
-                            INSERT INTO produtos (nome, classe, unidade, kg)
-                            VALUES (?, ?, ?, ?)
-                        """, (nome.strip(), classe, unidade, kg))
-                        conn.commit()
-                        st.session_state.msg = ("success", "Produto cadastrado!")
-                    except:
-                        st.session_state.msg = ("error", "Produto já existe!")
-
-                    st.session_state.confirmar_cadastro_produto = False
-                    st.rerun()
-
-            with c2:
-                if st.button("❌ Cancelar Produto"):
-                    st.session_state.confirmar_cadastro_produto = False
-        
+    
+        if st.button("Cadastrar Produto"):
+    
+            conn = conectar()
+            cursor = conn.cursor()
+    
+            try:
+                cursor.execute("""
+                    INSERT INTO produtos (nome, classe, unidade, kg)
+                    VALUES (%s, %s, %s, %s)
+                """, (nome.strip(), classe, unidade, kg))
+    
+                conn.commit()
+                st.session_state.msg = ("success", "Produto cadastrado!")
+    
+            except Exception:
+                st.session_state.msg = ("error", "Produto já existe!")
+    
+            finally:
+                conn.close()
+    
         st.divider()
-
+    
+        # ===================== LISTAR =====================
+        conn = conectar()
         df = pd.read_sql_query("SELECT * FROM produtos", conn)
+        conn.close()
+    
         st.dataframe(df, use_container_width=True)
-
+    
         st.divider()
-
+    
+        # ===================== EDITAR / EXCLUIR =====================
         if not df.empty:
+    
             st.subheader("✏️ Editar / Excluir")
-
+    
             produto_selecionado = st.selectbox("Produto", df["nome"])
             dados = df[df["nome"] == produto_selecionado].iloc[0]
-
+    
             novo_nome = st.text_input("Nome", value=dados["nome"], key="edit_prod_nome")
+    
             nova_classe = st.selectbox(
                 "Classe",
                 ["Hortaliças", "Frutas", "Especiarias", "Cereais"],
                 index=["Hortaliças", "Frutas", "Especiarias", "Cereais"].index(dados["classe"]),
                 key="edit_classe"
             )
-
+    
             nova_unidade = st.selectbox(
                 "Unidade",
                 ["Kg", "Cx", "Sc", "Mo-4", "Mo-5", "Lt", "Centro", "Fd"],
                 index=["Kg", "Cx", "Sc", "Mo-4", "Mo-5", "Lt", "Centro", "Fd"].index(dados["unidade"]),
                 key="edit_unidade"
             )
+    
             novo_kg = st.number_input("Kg", value=float(dados["kg"]))
-
+    
             col1, col2 = st.columns(2)
-
+    
+            # ===================== UPDATE =====================
             with col1:
-                if not st.session_state.confirmar_edicao:
-                    if st.button("✏️ Atualizar"):
-                        st.session_state.confirmar_edicao = True
-                else:
-                    st.warning("Confirmar atualização?")
-                    c1, c2 = st.columns(2)
-                    with c1:
-                        if st.button("✅ Confirmar"):
-                            conn.execute("""
-                                UPDATE produtos
-                                SET nome=?, classe=?, unidade=?, kg=?
-                                WHERE id=?
-                            """, (novo_nome, nova_classe, nova_unidade, novo_kg, int(dados["id"])))
-                            conn.commit()
-                            st.session_state.msg = ("success", "Produto atualizado!")
-                            st.session_state.confirmar_edicao = False
-                            st.rerun()
-                    with c2:
-                        if st.button("❌ Cancelar"):
-                            st.session_state.confirmar_edicao = False
-
+                if st.button("✏️ Atualizar"):
+    
+                    conn = conectar()
+                    cursor = conn.cursor()
+    
+                    try:
+                        cursor.execute("""
+                            UPDATE produtos
+                            SET nome=%s, classe=%s, unidade=%s, kg=%s
+                            WHERE id=%s
+                        """, (
+                            novo_nome,
+                            nova_classe,
+                            nova_unidade,
+                            novo_kg,
+                            int(dados["id"])
+                        ))
+    
+                        conn.commit()
+                        st.session_state.msg = ("success", "Produto atualizado!")
+    
+                    except Exception as e:
+                        st.session_state.msg = ("error", str(e))
+    
+                    finally:
+                        conn.close()
+    
+                    st.rerun()
+    
+            # ===================== DELETE =====================
             with col2:
-                if not st.session_state.confirmar_exclusao:
-                    if st.button("🗑️ Excluir"):
-                        st.session_state.confirmar_exclusao = True
-                else:
-                    st.warning("Confirmar exclusão?")
-                    c1, c2 = st.columns(2)
-                    with c1:
-                        if st.button("✅ Confirmar Exclusão"):
-                            conn.execute("DELETE FROM produtos WHERE id=?", (int(dados["id"]),))
-                            conn.commit()
-                            st.session_state.msg = ("success", "Produto excluído!")
-                            st.session_state.confirmar_exclusao = False
-                            st.rerun()
-                    with c2:
-                        if st.button("❌ Cancelar Exclusão"):
-                            st.session_state.confirmar_exclusao = False
-
-        conn.close()
+                if st.button("🗑️ Excluir"):
+    
+                    conn = conectar()
+                    cursor = conn.cursor()
+    
+                    try:
+                        cursor.execute("DELETE FROM produtos WHERE id=%s", (int(dados["id"]),))
+                        conn.commit()
+                        st.session_state.msg = ("success", "Produto excluído!")
+    
+                    except Exception as e:
+                        st.session_state.msg = ("error", str(e))
+    
+                    finally:
+                        conn.close()
+    
+                    st.rerun()
 
     # ------------------ COTAÇÃO ------------------ #
     elif opcao == "Cotação do Dia":
+
         st.title("📊 Cotação do Dia")
 
-        data = st.date_input("Data", value=pd.to_datetime("today"))
-        conn = conectar()
+        # garante session_state
+        if "confirmar_cotacao" not in st.session_state:
+            st.session_state.confirmar_cotacao = False
 
+        data = st.date_input("Data", value=pd.to_datetime("today"))
+
+        conn = conectar()
         produtos = pd.read_sql_query("SELECT * FROM produtos", conn)
 
         if produtos.empty:
             st.warning("Cadastre produtos primeiro!")
-        else:
-            cotacoes = []
+            conn.close()
+            st.stop()
 
-            for _, row in produtos.iterrows():
-                produto = row["nome"]
+        cotacoes = []
 
-                ultima = pd.read_sql_query("""
-                    SELECT preco_min, preco_max, valor_kg
-                    FROM cotacoes
-                    WHERE produto = ?
-                    ORDER BY data DESC
-                    LIMIT 1
-                """, conn, params=(produto,))
+        for _, row in produtos.iterrows():
+            produto = row["nome"]
 
-                pmin_padrao = float(ultima.iloc[0]["preco_min"]) if not ultima.empty else 0.0
-                pmax_padrao = float(ultima.iloc[0]["preco_max"]) if not ultima.empty else 0.0
+            ultima = pd.read_sql_query("""
+                SELECT preco_min, preco_max, valor_kg
+                FROM cotacoes
+                WHERE produto = %s
+                ORDER BY data DESC
+                LIMIT 1
+            """, conn, params=(produto,))
 
-                col1, col2 = st.columns([1,2])
+            col1, col2 = st.columns([1, 2])
 
-                with col1:
-                    st.write(produto)
+            with col1:
+                st.write(produto)
 
-                with col2:
-                    st.write("Adicionar preços:")
+            with col2:
 
-                    # inicializa lista com última cotação
-                    if f"precos_{produto}" not in st.session_state:
-                        if not ultima.empty:
-                            st.session_state[f"precos_{produto}"] = [
-                                float(ultima.iloc[0]["preco_min"]),
-                                float(ultima.iloc[0]["preco_max"])
-                            ]
-                        else:
-                            st.session_state[f"precos_{produto}"] = []
+                key = f"precos_{produto}"
 
-                    precos = st.session_state[f"precos_{produto}"]
-
-                    # 🔹 BOTÕES LADO A LADO
-                    b1, b2 = st.columns(2)
-
-                    with b1:
-                        if st.button(f"➕ Adicionar", key=f"add_{produto}"):
-                            precos.append(0.0)
-
-                    with b2:
-                        if precos and st.button(f"➖ Remover", key=f"rem_{produto}"):
-                            precos.pop()
-
-                    # 🔹 PREÇOS LADO A LADO (3 por linha)
-                    cols = st.columns(3)
-
-                    for i in range(len(precos)):
-                        col = cols[i % 3]
-                        with col:
-                            precos[i] = st.number_input(
-                                f"P{i+1}",
-                                value=precos[i],
-                                key=f"{produto}_{i}"
-                            )
-
-                    # 🔹 CÁLCULOS
-                    precos_validos = [p for p in precos if p > 0]
-
-                    if precos_validos:
-                        pmin = min(precos_validos)
-                        pmax = max(precos_validos)
-                        preco_medio = sum(precos_validos) / len(precos_validos)
+                if key not in st.session_state:
+                    if not ultima.empty:
+                        st.session_state[key] = [
+                            float(ultima.iloc[0]["preco_min"]),
+                            float(ultima.iloc[0]["preco_max"])
+                        ]
                     else:
-                        pmin = pmax = preco_medio = 0
+                        st.session_state[key] = []
 
-                    valor_kg = (preco_medio / row["kg"]) if row["kg"] > 0 else 0
+                precos = st.session_state[key]
 
-                # 🔹 RESULTADOS (TODOS LADO A LADO)
-                def formatar(valor):
-                    return f"{valor:.2f}".replace(".", ",")
+                b1, b2 = st.columns(2)
+
+                with b1:
+                    if st.button("➕ Adicionar", key=f"add_{produto}"):
+                        precos.append(0.0)
+
+                with b2:
+                    if precos and st.button("➖ Remover", key=f"rem_{produto}"):
+                        precos.pop()
+
+                cols = st.columns(3)
+
+                for i in range(len(precos)):
+                    with cols[i % 3]:
+                        precos[i] = st.number_input(
+                            f"P{i+1}",
+                            value=precos[i],
+                            key=f"{produto}_{i}"
+                        )
+
+                precos_validos = [p for p in precos if p > 0]
+
+                if precos_validos:
+                    pmin = min(precos_validos)
+                    pmax = max(precos_validos)
+                    preco_medio = sum(precos_validos) / len(precos_validos)
+                else:
+                    pmin = pmax = preco_medio = 0
+
+                valor_kg = (preco_medio / row["kg"]) if row["kg"] > 0 else 0
+
                 st.caption(
-                    f"🔽 Mín: {pmin:.2f}   🔼 Máx: {pmax:.2f}   📊 Médio: {preco_medio:.2f}   ⚖️ Valor/Kg: {valor_kg:.2f}"
+                    f"🔽 Mín: {pmin:.2f} | 🔼 Máx: {pmax:.2f} | 📊 Médio: {preco_medio:.2f} | ⚖️ Kg: {valor_kg:.2f}"
                 )
 
-                #preco_medio = (pmin + pmax) / 2 if (pmin > 0 or pmax > 0) else 0
-                #valor_kg = (preco_medio / row["kg"]) if row["kg"] > 0 else 0
-                #st.caption(f"Preço médio: {preco_medio:.2f} | Valor/kg: {valor_kg:.2f}")
-
-                    # 🔔 ALERTA DE VARIAÇÃO
                 if not ultima.empty:
                     valor_kg_anterior = float(ultima.iloc[0]["valor_kg"])
 
@@ -659,108 +592,150 @@ else:
                         variacao = ((valor_kg - valor_kg_anterior) / valor_kg_anterior) * 100
 
                         if abs(variacao) > 30:
-                            st.warning(f"⚠️ Variação alta: {variacao:.1f}% em relação à última cotação")
+                            st.warning(f"⚠️ Variação alta: {variacao:.1f}%")
 
-                st.divider()
+            st.divider()
 
-                cotacoes.append((produto, row["classe"], row["unidade"], row["kg"], pmin, pmax))
+            cotacoes.append((produto, row["classe"], row["unidade"], row["kg"], pmin, pmax))
 
-            if not st.session_state.confirmar_cotacao:
-                if st.button("💾 Salvar Cotação"):
-                    st.session_state.confirmar_cotacao = True
-            else:
-                st.warning("Confirmar salvamento?")
-                c1, c2 = st.columns(2)
-
-                with c1:
-                    if st.button("✅ Confirmar"):
+        # ===================== SALVAR =====================
+        if not st.session_state.confirmar_cotacao:
+    
+            if st.button("💾 Salvar Cotação"):
+                st.session_state.confirmar_cotacao = True
+    
+        else:
+            st.warning("Confirmar salvamento?")
+            c1, c2 = st.columns(2)
+    
+            with c1:
+                if st.button("✅ Confirmar"):
+    
+                    cursor = conn.cursor()
+    
+                    try:
                         for c in cotacoes:
-                            conn.execute("""
+                            cursor.execute("""
                                 INSERT INTO cotacoes (
                                     data, classe, produto, unidade, kg,
                                     preco_min, preco_max, preco_medio, valor_kg
-                                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                )
+                                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
                             """, (
                                 str(data), c[1], c[0], c[2], c[3],
                                 c[4], c[5],
-                                (c[4]+c[5])/2,
-                                ((c[4]+c[5])/2)/c[3] if c[3] > 0 else 0
+                                (c[4] + c[5]) / 2,
+                                ((c[4] + c[5]) / 2) / c[3] if c[3] > 0 else 0
                             ))
-
+    
                         conn.commit()
                         st.success("Cotação salva com sucesso!")
-                        st.session_state.confirmar_cotacao = False
-                        st.rerun()
-
-                with c2:
-                    if st.button("❌ Cancelar"):
-                        st.session_state.confirmar_cotacao = False
-
+    
+                    except Exception as e:
+                        st.error(f"Erro ao salvar: {e}")
+    
+                    finally:
+                        conn.close()
+    
+                    st.session_state.confirmar_cotacao = False
+                    st.rerun()
+    
+            with c2:
+                if st.button("❌ Cancelar"):
+                    st.session_state.confirmar_cotacao = False
+    
         conn.close()
 
-    # ------------------ VISUALIZAR DADOS ------------------ #
+   # ------------------ VISUALIZAR DADOS ------------------ #
     elif opcao == "Visualizar Dados":
+    
         st.title("📋 Cotações")
-
+    
         conn = conectar()
         df = pd.read_sql_query("SELECT * FROM cotacoes", conn)
         conn.close()
-
-        if not df.empty:
-            df["data"] = pd.to_datetime(df["data"])
-
-            col1, col2, col3 = st.columns(3)
-
-            with col1:
-                data_inicio = st.date_input("Data inicial", df["data"].min())
-
-            with col2:
-                data_fim = st.date_input("Data final", df["data"].max())
-
-            with col3:
-                classe = st.selectbox("Classe", ["Todas","Hortaliças","Frutas","Especiarias","Cereais"])
-
-            df = df[(df["data"] >= pd.to_datetime(data_inicio)) & (df["data"] <= pd.to_datetime(data_fim))]
-
-            if classe != "Todas":
-                df = df[df["classe"] == classe]
-
-            # df continua com a coluna data (para o PDF)
-
-            df_tabela = df.drop(columns=["id","data"]).round(2)
-
-            # mostra só a tabela limpa
-            st.dataframe(df_tabela, use_container_width=True)
-
-            # usa o df completo no PDF
-            # botão
-            gerar_pdf_click = st.button("📄 Gerar PDF")
-
-            if gerar_pdf_click:
+    
+        if df.empty:
+            st.warning("Sem dados")
+            st.stop()
+    
+        # ===================== TRATAMENTO DE DATA =====================
+        df["data"] = pd.to_datetime(df["data"], errors="coerce")
+        df = df.dropna(subset=["data"])
+    
+        # ===================== FILTROS =====================
+        col1, col2, col3 = st.columns(3)
+    
+        with col1:
+            data_inicio = pd.to_datetime(
+                st.date_input("Data inicial", df["data"].min().date())
+            )
+    
+        with col2:
+            data_fim = pd.to_datetime(
+                st.date_input("Data final", df["data"].max().date())
+            )
+    
+        with col3:
+            classe = st.selectbox(
+                "Classe",
+                ["Todas", "Hortaliças", "Frutas", "Especiarias", "Cereais"]
+            )
+    
+        # ===================== FILTRO =====================
+        df_filtrado = df[
+            (df["data"] >= data_inicio) &
+            (df["data"] <= data_fim)
+        ]
+    
+        if classe != "Todas":
+            df_filtrado = df_filtrado[df_filtrado["classe"] == classe]
+    
+        # ===================== TABELA =====================
+        cols_drop = [c for c in ["id"] if c in df_filtrado.columns]
+        df_tabela = df_filtrado.drop(columns=cols_drop).round(2)
+    
+        st.dataframe(df_tabela, use_container_width=True)
+    
+        # ===================== PDF =====================
+        if st.button("📄 Gerar PDF"):
+    
+            try:
                 nome_pdf = f"cotacoes_{datetime.now().strftime('%d-%m-%Y')}.pdf"
-                gerar_pdf(df, nome_pdf)
+                gerar_pdf(df_filtrado, nome_pdf)
                 st.session_state["pdf_gerado"] = nome_pdf
-
-            # Excel (admin)
-            if st.session_state.nivel == "admin":
+                st.success("PDF gerado com sucesso!")
+    
+            except Exception as e:
+                st.error(f"Erro ao gerar PDF: {e}")
+    
+        # ===================== EXCEL =====================
+        if st.session_state.get("nivel") == "admin":
+    
+            try:
                 buffer = io.BytesIO()
-                df.to_excel(buffer, index=False, engine="openpyxl")
+                df_filtrado.to_excel(buffer, index=False, engine="openpyxl")
                 buffer.seek(0)
-
+    
                 st.download_button(
                     "📥 Baixar Excel",
                     buffer,
                     file_name=f"cotacoes_{datetime.now().strftime('%d-%m-%Y')}.xlsx"
                 )
-
-            # botão de download separado
-            if "pdf_gerado" in st.session_state:
+    
+            except Exception as e:
+                st.error(f"Erro ao gerar Excel: {e}")
+    
+        # ===================== DOWNLOAD PDF =====================
+        if st.session_state.get("pdf_gerado"):
+    
+            try:
                 with open(st.session_state["pdf_gerado"], "rb") as f:
                     st.download_button(
                         "📥 Baixar PDF",
                         f,
                         file_name=st.session_state["pdf_gerado"]
                     )
-
-        else:
-            st.warning("Sem dados")
+    
+            except FileNotFoundError:
+                st.warning("PDF não encontrado. Gere novamente.")
