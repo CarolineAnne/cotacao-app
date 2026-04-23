@@ -11,13 +11,11 @@ from reportlab.lib.styles import getSampleStyleSheet
 from supabase import create_client
 # ====================================================
 
-
 # ================== CONEXÃO =========================
 url = "https://yovuvhuubopujagvukki.supabase.co"
-key = "sb_publishable_xdViPgvmVxBvpjpNblJg6Q_sMX_QHje"
+key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlvdnV2aHV1Ym9wdWphZ3Z1a2tpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY4MjA1MTIsImV4cCI6MjA5MjM5NjUxMn0.ywT2j8efoK9hnGcckTVrPBa4P7Qi4WkJxkap5bSjLUM"
 supabase = create_client(url,key)
 # ====================================================
-
 
 # ================== VERIFICAR LOGIN =========================
 def verificar_login(usuario, senha):
@@ -32,7 +30,6 @@ def verificar_login(usuario, senha):
         return resposta.data[0]  # retorna dict: {'nome': ..., 'nivel': ...}
     return None
 # ====================================================
-
 
 # ================== GERAR PDF =========================
 def gerar_pdf(df, nome_pdf):
