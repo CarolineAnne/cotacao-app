@@ -7,7 +7,7 @@ from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, 
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet
-from supabase import creat_client
+from supabase import create_client
 
 # ------------------------------------------ #
 def verificar_login(usuario, senha):
