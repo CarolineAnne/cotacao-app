@@ -279,36 +279,36 @@ if st.session_state.logado:
         st.dataframe(df, use_container_width=True)
         st.divider()
     
-            # ===================== EDITAR / EXCLUIR =====================
-            if not df.empty:
-        
-                st.subheader("✏️ Editar / Excluir Usuário")
-        
-                usuario_sel = st.selectbox("Selecione o usuário", df["usuario"], key="select_user")
-                dados = df[df["usuario"] == usuario_sel].iloc[0]
-        
-                if "usuario_anterior" not in st.session_state:
-                    st.session_state.usuario_anterior = None
-        
-                if st.session_state.usuario_anterior != usuario_sel:
-                    st.session_state.edit_user_nome = dados["nome"]
-                    st.session_state.edit_user_usuario = dados["usuario"]
-                    st.session_state.edit_user_senha = dados["senha"]
-                    st.session_state.edit_user_nivel = dados["nivel"]
-                    st.session_state.usuario_anterior = usuario_sel
-        
-                novo_nome = st.text_input("Nome", key="edit_user_nome")
-                novo_usuario = st.text_input("Usuário", key="edit_user_usuario")
-                nova_senha = st.text_input("Senha", key="edit_user_senha")
-        
-                novo_nivel = st.selectbox(
-                    "Nível",
-                    ["admin", "cotacao", "visitante"],
-                    index=["admin", "cotacao", "visitante"].index(st.session_state.edit_user_nivel),
-                    key="edit_user_nivel"
-                )
-        
-                col1, col2 = st.columns(2)
+        # ===================== EDITAR / EXCLUIR =====================
+        if not df.empty:
+    
+            st.subheader("✏️ Editar / Excluir Usuário")
+    
+            usuario_sel = st.selectbox("Selecione o usuário", df["usuario"], key="select_user")
+            dados = df[df["usuario"] == usuario_sel].iloc[0]
+    
+            if "usuario_anterior" not in st.session_state:
+                st.session_state.usuario_anterior = None
+    
+            if st.session_state.usuario_anterior != usuario_sel:
+                st.session_state.edit_user_nome = dados["nome"]
+                st.session_state.edit_user_usuario = dados["usuario"]
+                st.session_state.edit_user_senha = dados["senha"]
+                st.session_state.edit_user_nivel = dados["nivel"]
+                st.session_state.usuario_anterior = usuario_sel
+    
+            novo_nome = st.text_input("Nome", key="edit_user_nome")
+            novo_usuario = st.text_input("Usuário", key="edit_user_usuario")
+            nova_senha = st.text_input("Senha", key="edit_user_senha")
+    
+            novo_nivel = st.selectbox(
+                "Nível",
+                ["admin", "cotacao", "visitante"],
+                index=["admin", "cotacao", "visitante"].index(st.session_state.edit_user_nivel),
+                key="edit_user_nivel"
+            )
+    
+            col1, col2 = st.columns(2)
 
             # ===================== ATUALIZAR =====================
             with col1:
