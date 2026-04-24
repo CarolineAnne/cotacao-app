@@ -582,44 +582,46 @@ if st.session_state.logado:
         else:
             st.warning("Confirmar salvamento?")
             c1, c2 = st.columns(2)
-    
+        
             with c1:
                 if st.button("✅ Confirmar"):
-    
-                    cursor = conn.cursor()
-    
+        
                     try:
+                        dados_insert = []
+        
                         for c in cotacoes:
-                            cursor.execute("""
-                                INSERT INTO cotacoes (
-                                    data, classe, produto, unidade, kg,
-                                    preco_min, preco_max, preco_medio, valor_kg
-                                )
-                                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-                            """, (
-                                str(data), c[1], c[0], c[2], c[3],
-                                c[4], c[5],
-                                (c[4] + c[5]) / 2,
-                                ((c[4] + c[5]) / 2) / c[3] if c[3] > 0 else 0
-                            ))
-    
-                        conn.commit()
-                        st.success("Cotação salva com sucesso!")
-    
+                            preco_medio = (c[4] + c[5]) / 2
+                            valor_kg = preco_medio / c[3] if c[3] > 0 else 0
+        
+                            dados_insert.append({
+                                "data": str(data),
+                                "classe": c[1],
+                                "produto": c[0],
+                                "unidade": c[2],
+                                "kg": c[3],
+                                "preco_min": c[4],
+                                "preco_max": c[5],
+                                "preco_medio": preco_medio,
+                                "valor_kg": valor_kg
+                            })
+        
+                        # Inserção no Supabase
+                        response = supabase.table("cotacoes").insert(dados_insert).execute()
+        
+                        if response.data:
+                            st.success("Cotação salva com sucesso!")
+                        else:
+                            st.error("Erro ao salvar dados.")
+        
                     except Exception as e:
                         st.error(f"Erro ao salvar: {e}")
-    
-                    finally:
-                        conn.close()
-    
+        
                     st.session_state.confirmar_cotacao = False
                     st.rerun()
-    
+        
             with c2:
                 if st.button("❌ Cancelar"):
                     st.session_state.confirmar_cotacao = False
-    
-        conn.close()
     # =====================
 
    # ===================== VISUALIZAR DADOS 
