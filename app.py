@@ -691,14 +691,14 @@ if st.session_state.logado:
             except Exception as e:
                 st.error(f"Erro ao gerar PDF: {e}")
 
-            # DOWNLOAD PDF
-            if st.session_state.get("pdf_bytes"):
-    
-                st.download_button(
-                    "📥 Baixar PDF",
-                    st.session_state["pdf_bytes"],
-                    file_name=f"cotacoes_{datetime.now().strftime('%d-%m-%Y')}.pdf"
-                )
+        # DOWNLOAD PDF
+        if st.session_state.get("pdf_bytes"):
+
+            st.download_button(
+                "📥 Baixar PDF",
+                st.session_state["pdf_bytes"],
+                file_name=f"cotacoes_{datetime.now().strftime('%d-%m-%Y')}.pdf"
+            )
     
         # EXCEL
         if st.session_state.get("nivel") == "admin":
