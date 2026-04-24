@@ -630,9 +630,9 @@ if st.session_state.logado:
                     st.session_state.confirmar_cotacao = False
     # =====================
 
-       # ===================== VISUALIZAR DADOS 
-       elif opcao == "Visualizar Dados":
-    
+   # ===================== VISUALIZAR DADOS 
+   elif opcao == "Visualizar Dados":
+
         st.title("📋 Cotações")
     
         try:
@@ -721,5 +721,3 @@ if st.session_state.logado:
         
                 except Exception as e:
                     st.error(f"Erro ao gerar Excel: {e}")
-        
-        
