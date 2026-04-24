@@ -33,102 +33,108 @@ def verificar_login(usuario, senha):
 # ====================================================
 
 # ================== GERAR PDF =========================
-def gerar_pdf(df, nome_pdf):
-
+def gerar_pdf(df, nome_arquivo):
     doc = SimpleDocTemplate(
-        nome_pdf,
-        pagesize=A4,
-        leftMargin=10,
-        rightMargin=10,
-        topMargin=5,
-        bottomMargin=5
-    )
-
+    nome_arquivo,
+    pagesize=A4,
+    leftMargin=13,
+    rightMargin=13,
+    topMargin=6,
+    bottomMargin=6
+    )   
     styles = getSampleStyleSheet()
     elementos = []
-
-    # garante que existe coluna classe
-    if "classe" not in df.columns:
-        raise ValueError("Coluna 'classe' não encontrada")
 
     classes = df["classe"].unique()
 
     for c in classes:
+        dados_classe = df[df["classe"] == c]
+        
+        # 🔹 REMOVE A COLUNA CLASSE DA TABELA
+        dados_classe = dados_classe.drop(columns=["classe"])
 
-        dados = df[df["classe"] == c].copy()
+        tabela_dados = [list(dados_classe.columns)] + dados_classe.values.tolist()
 
-        if dados.empty:
-            continue
+        # -------- CABEÇALHO -------- #
+        try:
+            from reportlab.platypus import Image
+            logo = Image("logo.png", width=70, height=45)
+            elementos.append(logo)
+        except:
+            pass  # se não encontrar o logo, não quebra o sistema
 
-        # DATA
-        if "data" not in dados.columns:
-            raise ValueError("Coluna 'data' não encontrada")
+        from reportlab.lib.enums import TA_CENTER
 
-        data_cotacao = pd.to_datetime(dados["data"].max()).strftime('%d/%m/%Y')
-        data_emissao = datetime.now().strftime('%d/%m/%Y')
+        # Estilos centralizados
+        estilo_titulo = styles["Title"].clone('titulo_centro')
+        estilo_titulo.alignment = TA_CENTER
+        estilo_titulo.leading = 14
+        estilo_titulo.spaceAfter = 4
+        estilo_titulo.spaceBefore = 6
 
-        # LIMPEZA
-        dados.drop(columns=[col for col in ["id", "classe"] if col in dados.columns], inplace=True)
+        estilo_sub = styles["Italic"].clone('sub_centro')
+        estilo_sub.alignment = TA_CENTER
+        estilo_sub.leading = 12  # padrão é maior → diminui aqui
+        estilo_sub.spaceAfter = 2
+        estilo_sub.spaceBefore = 0
 
-        colunas_ordenadas = [
-            "produto", "unidade", "kg",
-            "preco_min", "preco_max",
-            "preco_medio", "valor_kg"
-        ]
-
-        dados = dados[[c for c in colunas_ordenadas if c in dados.columns]]
-
-        # NOME COLUNAS
-        dados.rename(columns={
-            "produto": "Produto",
-            "unidade": "Unidade",
-            "kg": "Kg",
-            "preco_min": "Preço Mín",
-            "preco_max": "Preço Máx",
-            "preco_medio": "Preço Médio",
-            "valor_kg": "Valor/Kg"
-        }, inplace=True)
-
-        # FORMATAÇÃO
-        for col in dados.columns:
-            if pd.api.types.is_numeric_dtype(dados[col]):
-                dados[col] = dados[col].apply(
-                    lambda x: f"{x:.2f}".replace(".", ",") if pd.notnull(x) else ""
-                )
-
-        # CABEÇALHO
-        estilo_titulo = styles["Title"]
-        estilo_sub = styles["Italic"]
-
+        # -------- TÍTULOS CENTRALIZADOS -------- #
         elementos.append(Paragraph("AMA - Autarquia Municipal de Abastecimento", estilo_sub))
+        elementos.append(Paragraph("Diretor Executivo: Celso Candido Almeida Leal", estilo_sub))
         elementos.append(Paragraph("Relatório de Cotação de Preços", estilo_titulo))
-        elementos.append(Spacer(1, 8))
+        elementos.append(Spacer(1, 12))
 
-        # INFO
-        info = Table([[
+        # -------- CLASSE E DATA LADO A LADO -------- #
+        from reportlab.platypus import Table
+
+        info_dados = [[
             f"Classe: {c}",
-            f"Cotação: {data_cotacao}",
-            f"Emissão: {data_emissao}"
-        ]], colWidths=[150, 150, 150])
+            f"Data de emissão: {datetime.now().strftime('%d/%m/%Y')}"
+        ]]
 
-        elementos.append(info)
-        elementos.append(Spacer(1, 10))
-
-        # TABELA
-        tabela = Table(
-            [list(dados.columns)] + dados.values.tolist(),
-            repeatRows=1
-        )
-
-        tabela.setStyle([
-            ("BACKGROUND", (0, 0), (-1, 0), colors.darkgreen),
-            ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-            ("GRID", (0, 0), (-1, -1), 0.3, colors.grey),
-            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-            ("ALIGN", (0, 0), (-1, 0), "CENTER"),
+        info_tabela = Table(info_dados, colWidths=[250, 250])
+        info_tabela.setStyle([
+            ("ALIGN", (0,0), (-1,-1), "CENTER"),
+            ("FONTNAME", (0,0), (-1,-1), "Helvetica-Bold"),
         ])
 
+        elementos.append(info_tabela)
+        elementos.append(Spacer(1, 12))
+
+        # -------- TABELA -------- #
+        tabela_dados = [list(dados_classe.columns)] + dados_classe.values.tolist()
+
+        num_colunas = len(tabela_dados[0])
+        largura_total = 560  # largura útil do A4 considerando margens
+        # deixa a coluna do produto maior automaticamente
+        
+        tabela = Table(tabela_dados, colWidths=[125, 75, 75, 75], rowHeights=15, repeatRows=1)
+
+        tabela.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,0), colors.darkgreen),
+            ('TEXTCOLOR',(0,0),(-1,0),colors.white),
+            ('ALIGN',(0,0),(-1,-1),'CENTER'),
+            ('FONTNAME', (0,0),(-1,0),'Helvetica-Bold'),
+            ('GRID', (0,0), (-1,-1), 0.1, colors.black),
+            ('BACKGROUND', (0,1), (-1,-1), colors.whitesmoke),
+
+            # 🔹 MELHORIA DE ESPAÇAMENTO (opcional, mas recomendado)
+            ('LEFTPADDING', (0,0), (-1,-1), 5),
+            ('RIGHTPADDING', (0,0), (-1,-1), 5),
+            ('TOPPADDING', (0,0), (-1,-1), 4),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 4),
+        ]))
+
+        tabela.hAlign = 'CENTER'
+
         elementos.append(tabela)
+        elementos.append(Spacer(1, 20))
+
+        # -------- RODAPÉ -------- #
+        elementos.append(Paragraph("Grace Kelly Rodrigues da Silva Santos", styles["Italic"]))
+        elementos.append(Paragraph("Supervisor de Estatística, Pesquisa e Controle de Qualidade", styles["Italic"]))
+
+        # Nova página para próxima classe
         elementos.append(PageBreak())
 
     doc.build(elementos)
