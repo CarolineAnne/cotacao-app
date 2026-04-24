@@ -631,99 +631,93 @@ if st.session_state.logado:
     # =====================
 
    # ===================== VISUALIZAR DADOS 
-    elif opcao == "Visualizar Dados":
+   elif opcao == "Visualizar Dados":
 
-        st.title("📋 Cotações")
-    
+    st.title("📋 Cotações")
+
+    try:
+        resp = supabase.table("cotacoes").select("*").execute()
+        df = pd.DataFrame(resp.data)
+
+    except Exception as e:
+        st.error(f"Erro ao carregar dados: {e}")
+        st.stop()
+
+    if df.empty:
+        st.warning("Sem dados")
+        st.stop()
+
+    # DATA
+    df["data"] = pd.to_datetime(df["data"], errors="coerce")
+    df = df.dropna(subset=["data"])
+
+    # FILTROS
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        data_inicio = st.date_input("Data inicial", df["data"].min())
+
+    with col2:
+        data_fim = st.date_input("Data final", df["data"].max())
+
+    with col3:
+        classe = st.selectbox(
+            "Classe",
+            ["Todas", "Hortaliças", "Frutas", "Especiarias", "Cereais"]
+        )
+
+    # FILTRO
+    df = df[
+        (df["data"] >= pd.to_datetime(data_inicio)) &
+        (df["data"] <= pd.to_datetime(data_fim))
+    ]
+
+    if classe != "Todas":
+        df = df[df["classe"] == classe]
+
+    # 🔥 IGUAL AO ANTIGO (REMOVE DATA)
+    df_tabela = df.drop(columns=[c for c in ["id", "data"] if c in df.columns]).round(2)
+
+    st.dataframe(df_tabela, use_container_width=True)
+
+    # BOTÃO PDF (igual ao antigo)
+    gerar_pdf_click = st.button("📄 Gerar PDF")
+
+    # EXCEL
+    if st.session_state.get("nivel") == "admin":
+
         try:
-            resp = supabase.table("cotacoes").select("*").execute()
-            df = pd.DataFrame(resp.data)
-    
+            buffer = io.BytesIO()
+            df_tabela.to_excel(buffer, index=False, engine="openpyxl")
+            buffer.seek(0)
+
+            st.download_button(
+                "📥 Baixar Excel",
+                buffer,
+                file_name=f"cotacoes_{datetime.now().strftime('%d-%m-%Y')}.xlsx"
+            )
+
         except Exception as e:
-            st.error(f"Erro ao carregar dados: {e}")
-            st.stop()
-    
-        if df.empty:
-            st.warning("Sem dados")
-            st.stop()
-    
-        # TRATAMENTO DE DATA
-        df["data"] = pd.to_datetime(df["data"], errors="coerce")
-        df = df.dropna(subset=["data"])
-    
-        # FILTROS
-        col1, col2, col3 = st.columns(3)
-    
-        with col1:
-            data_inicio = pd.to_datetime(
-                st.date_input("Data inicial", df["data"].min().date())
-            )
-    
-        with col2:
-            data_fim = pd.to_datetime(
-                st.date_input("Data final", df["data"].max().date())
-            )
-    
-        with col3:
-            classe = st.selectbox(
-                "Classe",
-                ["Todas", "Hortaliças", "Frutas", "Especiarias", "Cereais"]
-            )
-    
-        # FILTRO
-        df_filtrado = df[
-            (df["data"] >= data_inicio) &
-            (df["data"] <= data_fim)
-        ]
-    
-        if classe != "Todas":
-            df_filtrado = df_filtrado[df_filtrado["classe"] == classe]
-    
-        # TABELA
-        cols_drop = [c for c in ["id"] if c in df_filtrado.columns]
-        df_tabela = df_filtrado.drop(columns=cols_drop).round(2)
-    
-        st.dataframe(df_tabela, use_container_width=True)
-    
-        # PDF
-        if st.button("📄 Gerar PDF"):
-        
-            try:
-                nome_pdf = f"cotacoes_{datetime.now().strftime('%d-%m-%Y')}.pdf"
-                gerar_pdf(df_filtrado, nome_pdf)
-                st.session_state["pdf_gerado"] = nome_pdf
-                st.success("PDF gerado com sucesso!")
-        
-            except Exception as e:
-                st.error(f"Erro ao gerar PDF: {e}")
-        
-        # 🔽 DOWNLOAD FORA DO BOTÃO (IMPORTANTE!)
-        if st.session_state.get("pdf_gerado"):
-        
-            try:
-                with open(st.session_state["pdf_gerado"], "rb") as f:
-                    st.download_button(
-                        "📥 Baixar PDF",
-                        f,
-                        file_name=st.session_state["pdf_gerado"]
-                    )
-        
-            except FileNotFoundError:
-                st.warning("PDF não encontrado. Gere novamente.")
-    
-        # EXCEL
-        if st.session_state.get("nivel") == "admin":
-    
-            try:
-                buffer = io.BytesIO()
-                df_filtrado.to_excel(buffer, index=False, engine="openpyxl")
-                buffer.seek(0)
-    
+            st.error(f"Erro ao gerar Excel: {e}")
+
+    # PDF
+    if gerar_pdf_click:
+
+        try:
+            nome_pdf = f"cotacoes_{datetime.now().strftime('%d-%m-%Y')}.pdf"
+
+            # ⚠️ IMPORTANTE: usar df ORIGINAL (com data e classe)
+            gerar_pdf(df, nome_pdf)
+
+            with open(nome_pdf, "rb") as f:
                 st.download_button(
-                    "📥 Baixar Excel",
-                    buffer,
-                    file_name=f"cotacoes_{datetime.now().strftime('%d-%m-%Y')}.xlsx"
+                    "📥 Baixar PDF",
+                    f,
+                    file_name=nome_pdf
                 )
+
+        except Exception as e:
+            st.error(f"Erro ao gerar PDF: {e}")
     
             except Exception as e:
                 st.error(f"Erro ao gerar Excel: {e}")
