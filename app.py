@@ -681,24 +681,29 @@ if st.session_state.logado:
     
         # PDF
         if st.button("📄 Gerar PDF"):
-    
+        
             try:
                 nome_pdf = f"cotacoes_{datetime.now().strftime('%d-%m-%Y')}.pdf"
                 gerar_pdf(df_filtrado, nome_pdf)
                 st.session_state["pdf_gerado"] = nome_pdf
                 st.success("PDF gerado com sucesso!")
-    
+        
             except Exception as e:
                 st.error(f"Erro ao gerar PDF: {e}")
-
-        # DOWNLOAD PDF
-        if st.session_state.get("pdf_bytes"):
-
-            st.download_button(
-                "📥 Baixar PDF",
-                st.session_state["pdf_bytes"],
-                file_name=f"cotacoes_{datetime.now().strftime('%d-%m-%Y')}.pdf"
-            )
+        
+        # 🔽 DOWNLOAD FORA DO BOTÃO (IMPORTANTE!)
+        if st.session_state.get("pdf_gerado"):
+        
+            try:
+                with open(st.session_state["pdf_gerado"], "rb") as f:
+                    st.download_button(
+                        "📥 Baixar PDF",
+                        f,
+                        file_name=st.session_state["pdf_gerado"]
+                    )
+        
+            except FileNotFoundError:
+                st.warning("PDF não encontrado. Gere novamente.")
     
         # EXCEL
         if st.session_state.get("nivel") == "admin":
