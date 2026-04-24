@@ -718,6 +718,3 @@ if st.session_state.logado:
     
             except Exception as e:
                 st.error(f"Erro ao gerar PDF: {e}")
-        
-                except Exception as e:
-                    st.error(f"Erro ao gerar Excel: {e}")
