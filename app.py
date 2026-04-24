@@ -630,8 +630,8 @@ if st.session_state.logado:
                     st.session_state.confirmar_cotacao = False
     # =====================
 
-# ===================== VISUALIZAR DADOS 
-elif opcao == "Visualizar Dados":
+    # ===================== VISUALIZAR DADOS 
+    elif opcao == "Visualizar Dados":
 
         st.title("📋 Cotações")
     
