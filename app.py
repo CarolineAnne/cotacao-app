@@ -495,29 +495,30 @@ if st.session_state.logado:
             df = pd.DataFrame(response.data)
             
             if not df.empty:
-            
+        
                 # 🔹 limpa possíveis espaços
                 df["classe"] = df["classe"].astype(str).str.strip()
                 df["nome"] = df["nome"].astype(str).str.strip()
-            
+        
                 # 🔹 ordem personalizada das classes
                 ordem_classes = ["Hortaliças", "Frutas", "Especiarias", "Cereais"]
-            
+        
                 df["classe"] = pd.Categorical(
                     df["classe"],
                     categories=ordem_classes,
                     ordered=True
                 )
-            
-                # 🔹 ordena por classe e depois nome do produto
+        
+                # 🔹 ordena
                 df = df.sort_values(["classe", "nome"], na_position="last")
-            
-                st.dataframe(df, use_container_width=True)
-                
-                except Exception as e:
-                    st.error(f"Erro ao carregar produtos: {e}")
-                
-                st.divider()
+        
+            # 🔹 FORA do if, mas ainda dentro do try
+            st.dataframe(df, use_container_width=True)
+        
+        except Exception as e:
+            st.error(f"Erro ao carregar produtos: {e}")
+        
+        st.divider()
     
         # EDITAR / EXCLUIR
         if not df.empty:
