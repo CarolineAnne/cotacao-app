@@ -12,35 +12,50 @@ from reportlab.lib.styles import getSampleStyleSheet
 from supabase import create_client
 # ====================================================
 
-@st.cache_data(ttl=60)
-def carregar_produtos():
-    resp = supabase.table("produtos").select("*").execute()
-    df = pd.DataFrame(resp.data)
-
-    if not df.empty:
-        df["nome"] = df["nome"].astype(str).str.strip().str.upper()
-        df["classe"] = df["classe"].astype(str).str.strip()
-
-    return df
-
-@st.cache_data(ttl=60)
-def carregar_cotacoes():
-    resp = supabase.table("cotacoes")\
-        .select("produto, preco_min, preco_max, valor_kg, data")\
-        .execute()
-
-    df = pd.DataFrame(resp.data)
-
-    if not df.empty:
-        df["produto"] = df["produto"].astype(str).str.strip().str.upper()
-
-    return df
-
 # ================== CONEXÃO =========================
 url = "https://yovuvhuubopujagvukki.supabase.co"
 key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlvdnV2aHV1Ym9wdWphZ3Z1a2tpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY4MjA1MTIsImV4cCI6MjA5MjM5NjUxMn0.ywT2j8efoK9hnGcckTVrPBa4P7Qi4WkJxkap5bSjLUM"
 supabase = create_client(url,key)
 # ====================================================
+
+@st.cache_data(ttl=60)
+def carregar_produtos():
+
+    df = pd.DataFrame()  # garante existência
+
+    try:
+        resp = supabase.table("produtos").select("*").execute()
+
+        if resp and resp.data:
+            df = pd.DataFrame(resp.data)
+
+            df["nome"] = df["nome"].astype(str).str.strip().str.upper()
+            df["classe"] = df["classe"].astype(str).str.strip()
+
+    except Exception as e:
+        st.error(f"Erro ao carregar produtos: {e}")
+
+    return df
+
+@st.cache_data(ttl=60)
+def carregar_cotacoes():
+
+    df = pd.DataFrame()  # 🔥 garante que sempre existe
+
+    try:
+        resp = supabase.table("cotacoes")\
+            .select("produto, preco_min, preco_max, valor_kg, data")\
+            .execute()
+
+        if resp and resp.data:
+            df = pd.DataFrame(resp.data)
+
+            df["produto"] = df["produto"].astype(str).str.strip().str.upper()
+
+    except Exception as e:
+        st.error(f"Erro ao carregar cotações: {e}")
+
+    return df
 
 # ================== VERIFICAR LOGIN =========================
 def verificar_login(usuario, senha):
@@ -69,16 +84,24 @@ def gerar_pdf(df, nome_pdf):
     styles = getSampleStyleSheet()
     elementos = []
 
-    df["classe"] = df["classe"].astype(str).str.strip().str.upper()
-    classes = df["classe"].dropna().unique()
+    if "data" not in df.columns:
+        raise ValueError("Coluna data não existe")
 
-    for c in classes:
+    if "classe" not in df.columns:
+        raise ValueError("Coluna classe não existe")
+    
+    classes = df["classe"].dropna().astype(str).str.strip().unique()
+
+    # 🔥 GARANTIA EXTRA
+    if len(classes) == 0:
+        raise ValueError("Nenhuma classe encontrada para gerar PDF.")
+
+    for i, c in enumerate(classes):
         dados_classe = df[df["classe"] == c].copy()
 
         # 🔹 evita erro se não tiver dados
         if dados_classe.empty:
             continue
-            st.write("Classe:", c, "Linhas:", len(dados_classe))
 
         # 🔹 PEGA A DATA DA COTAÇÃO (ANTES DE QUALQUER ALTERAÇÃO)
         if "data" not in dados_classe.columns:
@@ -245,8 +268,16 @@ def gerar_pdf(df, nome_pdf):
         elementos.append(Paragraph("Supervisor de Estatística, Pesquisa e Controle de Qualidade", estilo_sub))
 
         # Nova página para próxima classe
-        elementos.append(PageBreak())
+        if i < len(classes) - 1:
+            elementos.append(PageBreak())
 
+    # 🔥 PROTEÇÃO: evita PDF vazio
+    if not elementos:
+        elementos.append(Paragraph(
+            "Nenhum dado disponível para gerar o relatório.",
+            styles["Normal"]
+        ))
+    
     doc.build(elementos)
 # ====================================================
 
@@ -819,7 +850,7 @@ if st.session_state.logado:
                             valor_kg = preco_medio / c[3] if c[3] > 0 else 0
         
                             dados_insert.append({
-                                "data": str(data),
+                                "data": data.strftime("%Y-%m-%d"),
                                 "classe": c[1],
                                 "produto": str(c[0]).strip().upper(),
                                 "unidade": c[2],
