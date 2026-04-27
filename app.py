@@ -816,7 +816,7 @@ if st.session_state.logado:
         if gerar_pdf_click:
     
             try:
-                nome_pdf = f"cotacoes_{datetime.now().strftime('%d-%m-%Y')}.pdf"
+                nome_pdf = f"cotacoes_{data_ref.now().strftime('%d-%m-%Y')}.pdf"
     
                 # ⚠️ IMPORTANTE: usar df ORIGINAL (com data e classe)
                 gerar_pdf(df, nome_pdf)
