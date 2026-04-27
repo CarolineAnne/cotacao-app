@@ -361,6 +361,7 @@ if st.session_state.logado:
                 }).execute()
         
                 st.success("Usuário cadastrado com sucesso!")
+                st.cache_data.clear()
         
             except Exception as e:
                 st.error(f"Erro ao cadastrar: {e}")
@@ -421,6 +422,7 @@ if st.session_state.logado:
                         }).eq("id", int(dados["id"])).execute()
             
                         st.success("Usuário atualizado!")
+                        st.cache_data.clear()
             
                     except Exception as e:
                         st.error(f"Erro ao atualizar: {e}")
@@ -438,6 +440,7 @@ if st.session_state.logado:
                             .execute()
             
                         st.success("Usuário excluído!")
+                        st.cache_data.clear()
             
                     except Exception as e:
                         st.error(f"Erro ao excluir: {e}")
@@ -483,6 +486,7 @@ if st.session_state.logado:
                 }).execute()
         
                 st.session_state.msg = ("success", "Produto cadastrado!")
+                st.cache_data.clear()
         
             except Exception:
                 st.session_state.msg = ("error", "Produto já existe!")
@@ -570,6 +574,10 @@ if st.session_state.logado:
                 if st.button("✏️ Atualizar"):
             
                     try:
+                        # 🔥 1. guarda o nome antigo
+                        nome_antigo = dados["nome"]
+            
+                        # 🔥 2. atualiza produto
                         supabase.table("produtos").update({
                             "nome": novo_nome,
                             "classe": nova_classe,
@@ -577,7 +585,23 @@ if st.session_state.logado:
                             "kg": novo_kg
                         }).eq("id", int(dados["id"])).execute()
             
+                        # 🔥 3. atualiza TODAS as cotações com nome antigo
+                        supabase.table("cotacoes")\
+                            .update({"produto": novo_nome})\
+                            .eq("produto", nome_antigo)\
+                            .execute()
+            
+                        # 🔥 4. mensagem
                         st.session_state.msg = ("success", "Produto atualizado!")
+                        st.cache_data.clear()
+            
+                        # 🔥 5. limpa cache
+                        st.cache_data.clear()
+            
+                    except Exception as e:
+                        st.session_state.msg = ("error", str(e))
+            
+                    st.rerun()
             
                         st.cache_data.clear()  # 🔥 AQUI
             
@@ -589,6 +613,29 @@ if st.session_state.logado:
             # DELETE
             with col2:
                 if st.button("🗑️ Excluir"):
+            
+                    try:
+                        nome_antigo = dados["nome"]
+            
+                        # 🔥 remove cotações desse produto
+                        supabase.table("cotacoes")\
+                            .delete()\
+                            .eq("produto", nome_antigo)\
+                            .execute()
+            
+                        # 🔥 remove produto
+                        supabase.table("produtos")\
+                            .delete()\
+                            .eq("id", int(dados["id"]))\
+                            .execute()
+            
+                        st.session_state.msg = ("success", "Produto excluído!")            
+                        st.cache_data.clear()
+            
+                    except Exception as e:
+                        st.session_state.msg = ("error", str(e))
+            
+                    st.rerun()
             
                     try:
                         supabase.table("produtos")\
@@ -764,6 +811,7 @@ if st.session_state.logado:
         
                         if response.data:
                             st.success("Cotação salva com sucesso!")
+                            st.cache_data.clear()
                         else:
                             st.error("Erro ao salvar dados.")
         
