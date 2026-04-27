@@ -596,19 +596,30 @@ if st.session_state.logado:
                         st.cache_data.clear()
             
                         # 🔥 5. limpa cache
-                        st.cache_data.clear()
-            
-                    except Exception as e:
-                        st.session_state.msg = ("error", str(e))
-            
-                    st.rerun()
-            
-                        st.cache_data.clear()  # 🔥 AQUI
-            
-                    except Exception as e:
-                        st.session_state.msg = ("error", str(e))
-            
-                    st.rerun()
+                        try:
+                            nome_antigo = dados["nome"]
+                        
+                            supabase.table("produtos").update({
+                                "nome": novo_nome,
+                                "classe": nova_classe,
+                                "unidade": nova_unidade,
+                                "kg": novo_kg
+                            }).eq("id", int(dados["id"])).execute()
+                        
+                            supabase.table("cotacoes")\
+                                .update({"produto": novo_nome})\
+                                .eq("produto", nome_antigo)\
+                                .execute()
+                        
+                            st.session_state.msg = ("success", "Produto atualizado!")
+                        
+                            # 🔥 limpa cache (UMA VEZ SÓ e no lugar certo)
+                            st.cache_data.clear()
+                        
+                        except Exception as e:
+                            st.session_state.msg = ("error", str(e))
+                        
+                        st.rerun()
     
             # DELETE
             with col2:
