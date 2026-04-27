@@ -792,8 +792,24 @@ if st.session_state.logado:
     
         if classe != "Todas":
             df = df[df["classe"] == classe]
-    
-        # 🔥 IGUAL AO ANTIGO (REMOVE DATA)
+        
+        # 🔹 limpa possíveis espaços (evita erro de ordenação)
+        df["classe"] = df["classe"].astype(str).str.strip()
+        df["produto"] = df["produto"].astype(str).str.strip()
+        
+        # 🔹 ordem personalizada das classes
+        ordem_classes = ["Hortaliças", "Frutas", "Especiarias", "Cereais"]
+        
+        df["classe"] = pd.Categorical(
+            df["classe"],
+            categories=ordem_classes,
+            ordered=True
+        )
+        
+        # 🔹 ordena por classe e depois por produto (alfabético)
+        df = df.sort_values(["classe", "produto"])
+        
+        # 🔹 REMOVE DATA
         df_tabela = df.drop(columns=[c for c in ["id", "data"] if c in df.columns]).copy()
 
         # 🔹 colunas de preço
