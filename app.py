@@ -84,6 +84,8 @@ def gerar_pdf(df, nome_pdf):
     styles = getSampleStyleSheet()
     elementos = []
 
+    df["classe"] = df["classe"].fillna("SEM CLASSE")
+
     if "data" not in df.columns:
         raise ValueError("Coluna data não existe")
 
@@ -856,7 +858,7 @@ if st.session_state.logado:
         
                             dados_insert.append({
                                 "data": data.strftime("%Y-%m-%d"),
-                                "classe": c[1],
+                                "classe": c[1] if c[1] else "SEM CLASSE",
                                 "produto": str(c[0]).strip().upper(),
                                 "unidade": c[2],
                                 "kg": c[3],
