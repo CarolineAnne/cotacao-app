@@ -92,11 +92,6 @@ def gerar_pdf(df, nome_pdf):
     if "classe" not in df.columns:
         raise ValueError("Coluna classe não existe")
 
-    
-    st.write("DEBUG DF PDF:", df)
-    st.write("COLUNAS:", df.columns)
-    
-    
     classes = df["classe"].dropna().astype(str).str.strip().unique()
 
     # 🔥 GARANTIA EXTRA
