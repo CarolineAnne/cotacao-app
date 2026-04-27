@@ -33,14 +33,14 @@ def verificar_login(usuario, senha):
 # ====================================================
 
 # ================== GERAR PDF =========================
-def gerar_pdf(df, nome_arquivo):
+def gerar_pdf(df, nome_pdf):
     doc = SimpleDocTemplate(
-    nome_arquivo,
-    pagesize=A4,
-    leftMargin=13,
-    rightMargin=13,
-    topMargin=6,
-    bottomMargin=6
+        nome_pdf,
+        pagesize=A4,
+        leftMargin=10,
+        rightMargin=10,
+        topMargin=5,
+        bottomMargin=5
     )   
     styles = getSampleStyleSheet()
     elementos = []
@@ -49,16 +49,62 @@ def gerar_pdf(df, nome_arquivo):
 
     for c in classes:
         dados_classe = df[df["classe"] == c]
+
+        # 🔹 evita erro se não tiver dados
+        if dados_classe.empty:
+            continue
+
+        # 🔹 PEGA A DATA DA COTAÇÃO (ANTES DE QUALQUER ALTERAÇÃO)
+        if "data" not in dados_classe.columns:
+            raise ValueError("Coluna 'data' não encontrada para gerar o PDF.")
+
+        data_ref = dados_classe["data"].max()
+        data_cotacao = pd.to_datetime(data_ref).strftime('%d/%m/%Y')
         
-        # 🔹 REMOVE A COLUNA CLASSE DA TABELA
-        dados_classe = dados_classe.drop(columns=["classe"])
+        # 🔹 REMOVE COLUNAS DESNECESSÁRIAS
+        colunas_remover = [col for col in ["classe", "id"] if col in dados_classe.columns]
+        dados_classe = dados_classe.drop(columns=colunas_remover)
+
+        # 🔹 DEFINE ORDEM DAS COLUNAS (IMPORTANTE PRA NÃO BAGUNÇAR)
+        colunas_ordem = [
+            "produto",
+            "unidade",
+            "kg",
+            "preco_min",
+            "preco_max",
+            "preco_medio",
+            "valor_kg"
+        ]
+
+        colunas_existentes = [col for col in colunas_ordem if col in dados_classe.columns]
+        dados_classe = dados_classe[colunas_existentes]
+
+        # 🔹 RENOMEIA COLUNAS (CABEÇALHO BONITO NO PDF)
+        nomes_colunas = {
+            "produto": "Produto",
+            "unidade": "Unidade",
+            "kg": "Kg",
+            "preco_min": "Preço Mín",
+            "preco_max": "Preço Máx",
+            "preco_medio": "Preço Médio",
+            "valor_kg": "Valor/Kg"
+        }
+
+        dados_classe = dados_classe.rename(columns=nomes_colunas)
+
+        # 🔹 FORMATA NÚMEROS (2 CASAS DECIMAIS + VÍRGULA)
+        for col in dados_classe.columns:
+            if pd.api.types.is_numeric_dtype(dados_classe[col]):
+                dados_classe[col] = dados_classe[col].apply(
+                    lambda x: f"{x:.2f}".replace(".", ",") if pd.notnull(x) else ""
+                )
 
         tabela_dados = [list(dados_classe.columns)] + dados_classe.values.tolist()
 
         # -------- CABEÇALHO -------- #
         try:
             from reportlab.platypus import Image
-            logo = Image("logo.png", width=70, height=45)
+            logo = Image("logo.png", width=60, height=40)
             elementos.append(logo)
         except:
             pass  # se não encontrar o logo, não quebra o sistema
@@ -68,13 +114,15 @@ def gerar_pdf(df, nome_arquivo):
         # Estilos centralizados
         estilo_titulo = styles["Title"].clone('titulo_centro')
         estilo_titulo.alignment = TA_CENTER
-        estilo_titulo.leading = 14
+        estilo_titulo.fontSize = 14   # título principal
+        estilo_titulo.leading = 12
         estilo_titulo.spaceAfter = 4
         estilo_titulo.spaceBefore = 6
 
         estilo_sub = styles["Italic"].clone('sub_centro')
         estilo_sub.alignment = TA_CENTER
-        estilo_sub.leading = 12  # padrão é maior → diminui aqui
+        estilo_sub.fontSize = 8   # título principal
+        estilo_sub.leading = 8  # padrão é maior → diminui aqui
         estilo_sub.spaceAfter = 2
         estilo_sub.spaceBefore = 0
 
@@ -82,57 +130,92 @@ def gerar_pdf(df, nome_arquivo):
         elementos.append(Paragraph("AMA - Autarquia Municipal de Abastecimento", estilo_sub))
         elementos.append(Paragraph("Diretor Executivo: Celso Candido Almeida Leal", estilo_sub))
         elementos.append(Paragraph("Relatório de Cotação de Preços", estilo_titulo))
-        elementos.append(Spacer(1, 12))
+        elementos.append(Spacer(1, 6))
 
         # -------- CLASSE E DATA LADO A LADO -------- #
         from reportlab.platypus import Table
 
+        # 🔹 DATA DE EMISSÃO (momento do PDF)
+        data_emissao = datetime.now().strftime('%d/%m/%Y')
+
+        # 🔹 LINHA DE INFORMAÇÕES
         info_dados = [[
             f"Classe: {c}",
-            f"Data de emissão: {datetime.now().strftime('%d/%m/%Y')}"
+            f"Data de Cotação: {data_cotacao}",
+            f"Data de emissão: {data_emissao}"
         ]]
 
-        info_tabela = Table(info_dados, colWidths=[250, 250])
+        info_tabela = Table(info_dados, colWidths=[145, 145, 145]) # criação da tabela e definição da largura das colunas
         info_tabela.setStyle([
             ("ALIGN", (0,0), (-1,-1), "CENTER"),
-            ("FONTNAME", (0,0), (-1,-1), "Helvetica-Bold"),
+            ("VALIGN", (0,0), (-1,-1), "MIDDLE"),
+
+            # 🔹 REMOVE NEGRITO
+            ("FONTNAME", (0,0), (-1,-1), "Helvetica"),
+
+            # 🔹 FONTE MENOR
+            ("FONTSIZE", (0,0), (-1,-1), 7),
+
+            # 🔹 MENOS ESPAÇO (mais compacto)
+            ('TOPPADDING', (0,0), (-1,-1), 2),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 1),
         ])
 
         elementos.append(info_tabela)
-        elementos.append(Spacer(1, 12))
+        elementos.append(Spacer(1, 6))
+
+         # 🔹 REMOVE DATA DA TABELA (para não aparecer na tabela)
+        if "data" in dados_classe.columns:
+            dados_classe = dados_classe.drop(columns=["data"])
 
         # -------- TABELA -------- #
         tabela_dados = [list(dados_classe.columns)] + dados_classe.values.tolist()
 
-        num_colunas = len(tabela_dados[0])
-        largura_total = 560  # largura útil do A4 considerando margens
-        # deixa a coluna do produto maior automaticamente
-        
-        tabela = Table(tabela_dados, colWidths=[125, 75, 75, 75], rowHeights=15, repeatRows=1)
+        tabela = Table(
+            tabela_dados,
+            colWidths=[120, 40, 30, 50, 50, 60, 50], # largura da tabela
+            rowHeights=11, # altura da tabela
+            repeatRows=1
+        )
 
         tabela.setStyle(TableStyle([
             ('BACKGROUND', (0,0), (-1,0), colors.darkgreen),
             ('TEXTCOLOR',(0,0),(-1,0),colors.white),
-            ('ALIGN',(0,0),(-1,-1),'CENTER'),
+
+            # 🔹 ALINHAMENTO HORIZONTAL
+            ('ALIGN', (0,0), (-1,0), 'CENTER'),     # cabeçalho
+            ('ALIGN', (0,1), (1,-1), 'LEFT'),       # produto
+            ('ALIGN', (2,1), (-1,-1), 'RIGHT'),     # números
+
+            # 🔹 ALINHAMENTO VERTICAL (UMA ÚNICA REGRA)
+            ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+
             ('FONTNAME', (0,0),(-1,0),'Helvetica-Bold'),
-            ('GRID', (0,0), (-1,-1), 0.1, colors.black),
+
+            # LLINHAS FINAS
+            ('GRID', (0,0), (-1,-1), 0.1, colors.grey),
+            
             ('BACKGROUND', (0,1), (-1,-1), colors.whitesmoke),
 
             # 🔹 MELHORIA DE ESPAÇAMENTO (opcional, mas recomendado)
-            ('LEFTPADDING', (0,0), (-1,-1), 5),
-            ('RIGHTPADDING', (0,0), (-1,-1), 5),
-            ('TOPPADDING', (0,0), (-1,-1), 4),
-            ('BOTTOMPADDING', (0,0), (-1,-1), 4),
+            ('LEFTPADDING', (0,0), (-1,-1), 2),
+            ('RIGHTPADDING', (0,0), (-1,-1), 2),
+            ('TOPPADDING', (0,0), (-1,-1), 2),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 2),
+            
+            # tamanho da fonte
+            ('FONTSIZE', (0,0), (-1,0), 8),
+            ('FONTSIZE', (0,1), (-1,-1), 7), 
         ]))
 
         tabela.hAlign = 'CENTER'
 
         elementos.append(tabela)
-        elementos.append(Spacer(1, 20))
+        elementos.append(Spacer(1, 8))
 
         # -------- RODAPÉ -------- #
-        elementos.append(Paragraph("Grace Kelly Rodrigues da Silva Santos", styles["Italic"]))
-        elementos.append(Paragraph("Supervisor de Estatística, Pesquisa e Controle de Qualidade", styles["Italic"]))
+        elementos.append(Paragraph("Grace Kelly Rodrigues da Silva Santos", estilo_sub))
+        elementos.append(Paragraph("Supervisor de Estatística, Pesquisa e Controle de Qualidade", estilo_sub))
 
         # Nova página para próxima classe
         elementos.append(PageBreak())
