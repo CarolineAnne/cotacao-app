@@ -470,7 +470,7 @@ if st.session_state.logado:
         nome = st.text_input("Nome")
         classe = st.selectbox("Classe", ["Hortaliças", "Frutas", "Especiarias", "Cereais"])
         unidade = st.selectbox("Unidade", ["Kg", "Cx", "Sc", "Mo-4", "Mo-5", "Lt", "Centro", "Fd"])
-        kg = st.number_input("Kg", min_value=0.0)
+        kg = st.number_input("Kg", min_value=0, step=1, format="%d")
         
         if st.button("Cadastrar Produto"):
         
@@ -762,6 +762,10 @@ if st.session_state.logado:
         # DATA
         df["data"] = pd.to_datetime(df["data"], errors="coerce")
         df = df.dropna(subset=["data"])
+        
+        # 🔹 garantir kg inteiro (forma segura)
+        if "kg" in df.columns:
+            df["kg"] = pd.to_numeric(df["kg"], errors="coerce").fillna(0).astype(int)
     
         # FILTROS
         col1, col2, col3 = st.columns(3)
