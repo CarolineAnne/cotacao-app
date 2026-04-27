@@ -889,3 +889,128 @@ if st.session_state.logado:
             with c2:
                 if st.button("❌ Cancelar"):
                     st.session_state.confirmar_cotacao = False
+
+    # ===================== VISUALIZAR DADOS 
+    elif opcao == "Visualizar Dados":
+
+        st.title("📋 Cotações")
+
+        try:
+            resp = supabase.table("cotacoes")\
+                .select("data, classe, produto, unidade, kg, preco_min, preco_max, preco_medio, valor_kg")\
+                .execute()
+
+            df = pd.DataFrame(resp.data)
+
+        except Exception as e:
+            st.error(f"Erro ao carregar dados: {e}")
+            st.stop()
+
+        # 🔴 PROTEÇÃO (evita tela preta)
+        if df is None or df.empty:
+            st.warning("Sem dados disponíveis.")
+            st.stop()
+
+        # ================= TRATAMENTO =================
+        df["data"] = pd.to_datetime(df["data"], errors="coerce")
+        df = df.dropna(subset=["data"])
+
+        df["produto"] = df["produto"].astype(str).str.strip().str.upper()
+        df["classe"] = df["classe"].fillna("SEM CLASSE").astype(str).str.strip()
+
+        # 🔹 kg inteiro
+        if "kg" in df.columns:
+            df["kg"] = pd.to_numeric(df["kg"], errors="coerce").fillna(0).astype(int)
+
+        # ================= FILTROS =================
+        col1, col2, col3 = st.columns(3)
+
+        hoje = datetime.now().date()
+
+        with col1:
+            data_inicio = st.date_input("Data inicial", value=hoje)
+
+        with col2:
+            data_fim = st.date_input("Data final", value=hoje)
+
+        with col3:
+            classe = st.selectbox(
+                "Classe",
+                ["Todas", "Hortaliças", "Frutas", "Especiarias", "Cereais"]
+            )
+
+        # ================= FILTRO =================
+        data_inicio = pd.to_datetime(data_inicio)
+        data_fim = pd.to_datetime(data_fim)
+
+        df = df[(df["data"] >= data_inicio) & (df["data"] <= data_fim)]
+
+        if classe != "Todas":
+            df = df[df["classe"] == classe]
+
+        # ================= ORDENAÇÃO =================
+        ordem_classes = ["Hortaliças", "Frutas", "Especiarias", "Cereais", "SEM CLASSE"]
+
+        df["classe"] = pd.Categorical(
+            df["classe"],
+            categories=ordem_classes,
+            ordered=True
+        )
+
+        df = df.sort_values(["classe", "produto"])
+
+        # ================= TABELA =================
+        df_tabela = df.drop(columns=[c for c in ["id", "data"] if c in df.columns]).copy()
+
+        # 🔹 preços com vírgula
+        cols_preco = ["preco_min", "preco_max", "preco_medio", "valor_kg"]
+
+        for col in cols_preco:
+            if col in df_tabela.columns:
+                df_tabela[col] = df_tabela[col].apply(
+                    lambda x: f"{x:.2f}".replace(".", ",") if pd.notnull(x) else ""
+                )
+
+        st.dataframe(df_tabela, use_container_width=True)
+
+        # ================= BOTÃO PDF =================
+        gerar_pdf_click = st.button("📄 Gerar PDF")
+
+        # ================= EXCEL =================
+        if st.session_state.get("nivel") == "admin":
+
+            try:
+                buffer = io.BytesIO()
+                df_tabela.to_excel(buffer, index=False, engine="openpyxl")
+                buffer.seek(0)
+
+                st.download_button(
+                    "📥 Baixar Excel",
+                    buffer,
+                    file_name=f"cotacoes_{datetime.now().strftime('%d-%m-%Y')}.xlsx"
+                )
+
+            except Exception as e:
+                st.error(f"Erro ao gerar Excel: {e}")
+
+        # ================= PDF =================
+        if gerar_pdf_click:
+
+            try:
+                if not df.empty:
+                    data_ref = df["data"].max()
+                    nome_pdf = f"cotacoes_{data_ref.strftime('%d-%m-%Y')}.pdf"
+                else:
+                    nome_pdf = f"cotacoes_{datetime.now().strftime('%d-%m-%Y')}.pdf"
+
+                gerar_pdf(df, nome_pdf)
+
+                with open(nome_pdf, "rb") as f:
+                    st.download_button(
+                        "📥 Baixar PDF",
+                        f,
+                        file_name=nome_pdf
+                    )
+
+            except Exception as e:
+                st.error(f"Erro ao gerar PDF: {e}")
