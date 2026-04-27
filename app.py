@@ -574,10 +574,10 @@ if st.session_state.logado:
                 if st.button("✏️ Atualizar"):
             
                     try:
-                        # 🔥 1. guarda o nome antigo
+                        # 🔥 guarda nome antigo
                         nome_antigo = dados["nome"]
             
-                        # 🔥 2. atualiza produto
+                        # 🔥 atualiza produto
                         supabase.table("produtos").update({
                             "nome": novo_nome,
                             "classe": nova_classe,
@@ -585,71 +585,53 @@ if st.session_state.logado:
                             "kg": novo_kg
                         }).eq("id", int(dados["id"])).execute()
             
-                        # 🔥 3. atualiza TODAS as cotações com nome antigo
+                        # 🔥 atualiza cotações
                         supabase.table("cotacoes")\
                             .update({"produto": novo_nome})\
                             .eq("produto", nome_antigo)\
                             .execute()
             
-                        # 🔥 4. mensagem
+                        # 🔥 mensagem
                         st.session_state.msg = ("success", "Produto atualizado!")
+            
+                        # 🔥 limpa cache
                         st.cache_data.clear()
             
-                        # 🔥 5. limpa cache
-                        try:
-                            nome_antigo = dados["nome"]
-                        
-                            supabase.table("produtos").update({
-                                "nome": novo_nome,
-                                "classe": nova_classe,
-                                "unidade": nova_unidade,
-                                "kg": novo_kg
-                            }).eq("id", int(dados["id"])).execute()
-                        
-                            supabase.table("cotacoes")\
-                                .update({"produto": novo_nome})\
-                                .eq("produto", nome_antigo)\
-                                .execute()
-                        
-                            st.session_state.msg = ("success", "Produto atualizado!")
-                        
-                            # 🔥 limpa cache (UMA VEZ SÓ e no lugar certo)
-                            st.cache_data.clear()
-                        
-                        except Exception as e:
-                            st.session_state.msg = ("error", str(e))
-                        
-                        st.rerun()
+                    except Exception as e:
+                        st.session_state.msg = ("error", str(e))
+            
+                    # 🔥 recarrega tela
+                    st.rerun()
     
             # DELETE
-                with col2:
-                    if st.button("🗑️ Excluir"):
-                
-                        try:
-                            nome_antigo = dados["nome"]
-                
-                            # 🔥 remove cotações desse produto
-                            supabase.table("cotacoes")\
-                                .delete()\
-                                .eq("produto", nome_antigo)\
-                                .execute()
-                
-                            # 🔥 remove produto
-                            supabase.table("produtos")\
-                                .delete()\
-                                .eq("id", int(dados["id"]))\
-                                .execute()
-                
-                            st.session_state.msg = ("success", "Produto excluído!")
-                
-                            # 🔥 limpa cache
-                            st.cache_data.clear()
-                
-                        except Exception as e:
-                            st.session_state.msg = ("error", str(e))
-                
-                        # 🔥 recarrega tela (UMA VEZ SÓ)
-                        st.rerun()
+            with col2:
+                if st.button("🗑️ Excluir"):
+            
+                    try:
+                        nome_antigo = dados["nome"]
+            
+                        # 🔥 remove cotações desse produto
+                        supabase.table("cotacoes")\
+                            .delete()\
+                            .eq("produto", nome_antigo)\
+                            .execute()
+            
+                        # 🔥 remove produto
+                        supabase.table("produtos")\
+                            .delete()\
+                            .eq("id", int(dados["id"]))\
+                            .execute()
+            
+                        st.session_state.msg = ("success", "Produto excluído!")
+            
+                        # 🔥 limpa cache
+                        st.cache_data.clear()
+            
+                    except Exception as e:
+                        st.session_state.msg = ("error", str(e))
+            
+                    # 🔥 recarrega tela (UMA VEZ SÓ)
+                    st.rerun()
     # =====================
 
     # ===================== COTAÇÃO
