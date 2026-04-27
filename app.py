@@ -791,6 +791,11 @@ if st.session_state.logado:
             st.divider()
         
             cotacoes.append((produto, row["classe"], row["unidade"], row["kg"], pmin, pmax))
+
+        # 🔥 validação antes de qualquer PDF ou salvamento
+        if len(cotacoes) == 0:
+            st.error("Nenhuma cotação válida para gerar PDF.")
+            st.stop()
         # SALVAR
         if not st.session_state.confirmar_cotacao:
     
@@ -955,14 +960,19 @@ if st.session_state.logado:
         if gerar_pdf_click:
         
             try:
+                # Proteção contra PDF vazio
+                if df_tabela.empty:
+                    st.error("Nenhum dado disponível para gerar PDF.")
+                    st.stop()
+                
                 if not df.empty:
                     data_ref = df["data"].max()
                     nome_pdf = f"cotacoes_{data_ref.strftime('%d-%m-%Y')}.pdf"
                 else:
                     nome_pdf = f"cotacoes_{datetime.now().strftime('%d-%m-%Y')}.pdf"
-        
+
                 # ⚠️ IMPORTANTE: usar df ORIGINAL (com data e classe)
-                gerar_pdf(df, nome_pdf)
+                gerar_pdf(df_tabela, nome_pdf)
         
                 with open(nome_pdf, "rb") as f:
                     st.download_button(
