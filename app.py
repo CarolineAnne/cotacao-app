@@ -578,6 +578,8 @@ if st.session_state.logado:
             
                         st.session_state.msg = ("success", "Produto atualizado!")
             
+                        st.cache_data.clear()  # 🔥 AQUI
+            
                     except Exception as e:
                         st.session_state.msg = ("error", str(e))
             
