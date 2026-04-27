@@ -671,10 +671,17 @@ if st.session_state.logado:
             
             produtos["classe"] = produtos["classe"].str.upper().fillna("OUTROS")
             
+            # cria ordem numérica da classe
+            produtos["ordem_classe"] = produtos["classe"].map(ordem_classes)
+            
+            # ordena primeiro por classe, depois por nome
             produtos = produtos.sort_values(
-                by=["classe", "nome"],
-                key=lambda col: col.map(ordem_classes) if col.name == "classe" else col
+                by=["ordem_classe", "nome"],
+                ascending=[True, True]
             )
+            
+            # remove coluna auxiliar
+            produtos = produtos.drop(columns=["ordem_classe"])
         except Exception as e:
             st.error(f"Erro ao carregar produtos: {e}")
             st.stop()
