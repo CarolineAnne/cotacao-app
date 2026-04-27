@@ -15,14 +15,26 @@ from supabase import create_client
 @st.cache_data(ttl=60)
 def carregar_produtos():
     resp = supabase.table("produtos").select("*").execute()
-    return pd.DataFrame(resp.data)
+    df = pd.DataFrame(resp.data)
+
+    if not df.empty:
+        df["nome"] = df["nome"].astype(str).str.strip().str.upper()
+        df["classe"] = df["classe"].astype(str).str.strip()
+
+    return df
 
 @st.cache_data(ttl=60)
 def carregar_cotacoes():
     resp = supabase.table("cotacoes")\
         .select("produto, preco_min, preco_max, valor_kg, data")\
         .execute()
-    return pd.DataFrame(resp.data)
+
+    df = pd.DataFrame(resp.data)
+
+    if not df.empty:
+        df["produto"] = df["produto"].astype(str).str.strip().str.upper()
+
+    return df
 
 # ================== CONEXÃO =========================
 url = "https://yovuvhuubopujagvukki.supabase.co"
@@ -479,7 +491,7 @@ if st.session_state.logado:
         
             try:
                 supabase.table("produtos").insert({
-                    "nome": nome.strip(),
+                    "nome": nome.strip().upper()
                     "classe": classe,
                     "unidade": unidade,
                     "kg": kg
@@ -579,7 +591,7 @@ if st.session_state.logado:
             
                         # 🔥 atualiza produto
                         supabase.table("produtos").update({
-                            "nome": novo_nome,
+                            "nome": novo_nome.strip().upper(),
                             "classe": nova_classe,
                             "unidade": nova_unidade,
                             "kg": novo_kg
@@ -587,7 +599,7 @@ if st.session_state.logado:
             
                         # 🔥 atualiza cotações
                         supabase.table("cotacoes")\
-                            .update({"produto": novo_nome})\
+                            .update({"produto": novo_nome.strip().upper()})\
                             .eq("produto", nome_antigo)\
                             .execute()
             
@@ -681,7 +693,7 @@ if st.session_state.logado:
         cotacoes = []
         
         for _, row in produtos.iterrows():
-            produto = row["nome"]
+            produto = str(row["nome"]).strip().upper()
           
             # pega última cotação do produto atual
             if not df_ultimas.empty:
@@ -780,7 +792,7 @@ if st.session_state.logado:
                             dados_insert.append({
                                 "data": str(data),
                                 "classe": c[1],
-                                "produto": c[0],
+                                "produto": str(c[0]).strip().upper(),
                                 "unidade": c[2],
                                 "kg": c[3],
                                 "preco_min": c[4],
@@ -813,13 +825,18 @@ if st.session_state.logado:
     elif opcao == "Visualizar Dados":
 
         st.title("📋 Cotações")
-    
+
         try:
             resp = supabase.table("cotacoes")\
                 .select("data, classe, produto, unidade, kg, preco_min, preco_max, preco_medio, valor_kg")\
                 .execute()
+        
             df = pd.DataFrame(resp.data)
-    
+        
+            if not df.empty:
+                df["produto"] = df["produto"].astype(str).str.strip().str.upper()
+                df["classe"] = df["classe"].astype(str).str.strip()
+        
         except Exception as e:
             st.error(f"Erro ao carregar dados: {e}")
             st.stop()
