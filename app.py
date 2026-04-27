@@ -69,14 +69,16 @@ def gerar_pdf(df, nome_pdf):
     styles = getSampleStyleSheet()
     elementos = []
 
-    classes = df["classe"].unique()
+    df["classe"] = df["classe"].astype(str).str.strip().str.upper()
+    classes = df["classe"].dropna().unique()
 
     for c in classes:
-        dados_classe = df[df["classe"] == c]
+        dados_classe = df[df["classe"] == c].copy()
 
         # 🔹 evita erro se não tiver dados
         if dados_classe.empty:
             continue
+            st.write("Classe:", c, "Linhas:", len(dados_classe))
 
         # 🔹 PEGA A DATA DA COTAÇÃO (ANTES DE QUALQUER ALTERAÇÃO)
         if "data" not in dados_classe.columns:
@@ -979,7 +981,10 @@ if st.session_state.logado:
                     nome_pdf = f"cotacoes_{datetime.now().strftime('%d-%m-%Y')}.pdf"
 
                 # ⚠️ IMPORTANTE: usar df ORIGINAL (com data e classe)
-                gerar_pdf(df_tabela.copy(), nome_pdf)
+                df_pdf = df.copy()
+                df_pdf["classe"] = df_pdf["classe"].astype(str).str.strip().str.upper()
+                
+                gerar_pdf(df_pdf, nome_pdf)
         
                 with open(nome_pdf, "rb") as f:
                     st.download_button(
