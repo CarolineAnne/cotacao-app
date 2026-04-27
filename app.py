@@ -770,11 +770,13 @@ if st.session_state.logado:
         # FILTROS
         col1, col2, col3 = st.columns(3)
     
+        hoje = datetime.now().date()
+
         with col1:
-            data_inicio = st.date_input("Data inicial", df["data"].min())
-    
+            data_inicio = st.date_input("Data inicial", value=hoje)
+        
         with col2:
-            data_fim = st.date_input("Data final", df["data"].max())
+            data_fim = st.date_input("Data final", value=hoje)
     
         with col3:
             classe = st.selectbox(
