@@ -622,34 +622,34 @@ if st.session_state.logado:
                         st.rerun()
     
             # DELETE
-            with col2:
-                if st.button("🗑️ Excluir"):
-            
-                    try:
-                        nome_antigo = dados["nome"]
-            
-                        # 🔥 remove cotações desse produto
-                        supabase.table("cotacoes")\
-                            .delete()\
-                            .eq("produto", nome_antigo)\
-                            .execute()
-            
-                        # 🔥 remove produto
-                        supabase.table("produtos")\
-                            .delete()\
-                            .eq("id", int(dados["id"]))\
-                            .execute()
-            
-                        st.session_state.msg = ("success", "Produto excluído!")
-            
-                        # 🔥 limpa cache
-                        st.cache_data.clear()
-            
-                    except Exception as e:
-                        st.session_state.msg = ("error", str(e))
-            
-                    # 🔥 recarrega tela (UMA VEZ SÓ)
-                    st.rerun()
+                with col2:
+                    if st.button("🗑️ Excluir"):
+                
+                        try:
+                            nome_antigo = dados["nome"]
+                
+                            # 🔥 remove cotações desse produto
+                            supabase.table("cotacoes")\
+                                .delete()\
+                                .eq("produto", nome_antigo)\
+                                .execute()
+                
+                            # 🔥 remove produto
+                            supabase.table("produtos")\
+                                .delete()\
+                                .eq("id", int(dados["id"]))\
+                                .execute()
+                
+                            st.session_state.msg = ("success", "Produto excluído!")
+                
+                            # 🔥 limpa cache
+                            st.cache_data.clear()
+                
+                        except Exception as e:
+                            st.session_state.msg = ("error", str(e))
+                
+                        # 🔥 recarrega tela (UMA VEZ SÓ)
+                        st.rerun()
     # =====================
 
     # ===================== COTAÇÃO
