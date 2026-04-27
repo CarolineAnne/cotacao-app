@@ -883,23 +883,23 @@ if st.session_state.logado:
     
         # PDF
         if gerar_pdf_click:
-    
+        
             try:
                 if not df.empty:
-                data_ref = df["data"].max()
-                nome_pdf = f"cotacoes_{data_ref.strftime('%d-%m-%Y')}.pdf"
-            else:
-                nome_pdf = f"cotacoes_{datetime.now().strftime('%d-%m-%Y')}.pdf"
-    
+                    data_ref = df["data"].max()
+                    nome_pdf = f"cotacoes_{data_ref.strftime('%d-%m-%Y')}.pdf"
+                else:
+                    nome_pdf = f"cotacoes_{datetime.now().strftime('%d-%m-%Y')}.pdf"
+        
                 # ⚠️ IMPORTANTE: usar df ORIGINAL (com data e classe)
                 gerar_pdf(df, nome_pdf)
-    
+        
                 with open(nome_pdf, "rb") as f:
                     st.download_button(
                         "📥 Baixar PDF",
                         f,
                         file_name=nome_pdf
                     )
-    
+        
             except Exception as e:
                 st.error(f"Erro ao gerar PDF: {e}")
