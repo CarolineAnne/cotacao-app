@@ -57,6 +57,20 @@ def carregar_cotacoes():
 
     return df
 
+def corrigir_classe(valor):
+    valor = str(valor).strip().upper()
+
+    if valor in ["HORTALIÇAS", "HORTALICAS"]:
+        return "Hortaliças"
+    elif valor == "FRUTAS":
+        return "Frutas"
+    elif valor == "ESPECIARIAS":
+        return "Especiarias"
+    elif valor == "CEREAIS":
+        return "Cereais"
+    else:
+        return "SEM CLASSE"
+
 # ================== VERIFICAR LOGIN =========================
 def verificar_login(usuario, senha):
 
@@ -80,23 +94,26 @@ def gerar_pdf(df, nome_pdf):
         rightMargin=10,
         topMargin=5,
         bottomMargin=5
-    )   
+    )
+
     styles = getSampleStyleSheet()
     elementos = []
 
     df = df.copy()
 
-    df["classe"] = df["classe"].fillna("SEM CLASSE").astype(str).str.strip()
     df["produto"] = df["produto"].astype(str).str.strip().str.upper()
-    
+    df["classe"] = df["classe"].apply(corrigir_classe)
+
     ordem_classes = ["Hortaliças", "Frutas", "Especiarias", "Cereais", "SEM CLASSE"]
-    
-    df["ordem_classe"] = pd.Categorical(
-        df["classe"],
-        categories=ordem_classes,
-        ordered=True
-    )
-    
+
+    df["ordem_classe"] = df["classe"].map({
+        "Hortaliças": 1,
+        "Frutas": 2,
+        "Especiarias": 3,
+        "Cereais": 4,
+        "SEM CLASSE": 99
+    })
+
     df = df.sort_values(["ordem_classe", "produto"])
 
     if "data" not in df.columns:
@@ -105,7 +122,7 @@ def gerar_pdf(df, nome_pdf):
     if "classe" not in df.columns:
         raise ValueError("Coluna classe não existe")
 
-    classes = [c for c in ordem_classes if c in df["classe"].values]
+    classes = [c for c in ordem_classes if c in df["classe"].dropna().unique()]
 
     # 🔥 GARANTIA EXTRA
     if len(classes) == 0:
@@ -541,7 +558,7 @@ if st.session_state.logado:
             try:
                 supabase.table("produtos").insert({
                     "nome": nome.strip().upper(),
-                    "classe": classe,
+                    "classe": corrigir_classe(c[1]),
                     "unidade": unidade,
                     "kg": kg
                 }).execute()
@@ -563,7 +580,7 @@ if st.session_state.logado:
         
                 # 🔹 limpa possíveis espaços
                 df["classe"] = df["classe"].astype(str).str.strip()
-                df["nome"] = df["nome"].astype(str).str.strip()
+                df["nome"] = df["nome"].astype(str).str.strip().str.upper()
         
                 # 🔹 ordem personalizada das classes
                 ordem_classes = ["Hortaliças", "Frutas", "Especiarias", "Cereais"]
@@ -720,7 +737,7 @@ if st.session_state.logado:
             }
     
             # 🔹 padroniza classe
-            produtos["classe"] = produtos["classe"].fillna("SEM CLASSE").astype(str).str.strip()
+            produtos["classe"] = produtos["classe"].apply(corrigir_classe)
     
             # 🔹 cria ordem
             produtos["ordem_classe"] = produtos["classe"].map(ordem_classes).fillna(99)
@@ -862,7 +879,7 @@ if st.session_state.logado:
     
                             dados_insert.append({
                                 "data": data.strftime("%Y-%m-%d"),
-                                "classe": c[1] if c[1] else "SEM CLASSE",
+                                "classe": corrigir_classe(classe),
                                 "produto": str(c[0]).strip().upper(),
                                 "unidade": c[2],
                                 "kg": c[3],
@@ -916,8 +933,10 @@ if st.session_state.logado:
         df = df.dropna(subset=["data"])
 
         df["produto"] = df["produto"].astype(str).str.strip().str.upper()
-        df["classe"] = df["classe"].fillna("SEM CLASSE").astype(str).str.strip()
-
+        
+        df["classe"] = df["classe"].astype(str).str.strip()
+        df["classe"] = df["classe"].replace("", "SEM CLASSE")
+        df["classe"] = df["classe"].fillna("").apply(corrigir_classe)
         # 🔹 kg inteiro
         if "kg" in df.columns:
             df["kg"] = pd.to_numeric(df["kg"], errors="coerce").fillna(0).astype(int)
