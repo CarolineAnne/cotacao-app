@@ -901,7 +901,9 @@ if st.session_state.logado:
         data_inicio = pd.to_datetime(data_inicio)
         data_fim = pd.to_datetime(data_fim)
         
-        df = df[(df["data"] >= data_inicio) & (df["data"] <= data_fim)]
+        df["data"] = pd.to_datetime(df["data"], errors="coerce").dt.date
+
+        df = df[(df["data"] >= data_inicio.date()) & (df["data"] <= data_fim.date())]
     
         if classe != "Todas":
             df = df[df["classe"] == classe]
@@ -935,7 +937,12 @@ if st.session_state.logado:
                 )
     
         st.dataframe(df_tabela, use_container_width=True)
-    
+
+
+        st.write("DEBUG DF_TABELA:", df_tabela.shape)
+        st.dataframe(df_tabela)
+        
+        
         # BOTÃO PDF (igual ao antigo)
         gerar_pdf_click = st.button("📄 Gerar PDF")
     
@@ -972,7 +979,7 @@ if st.session_state.logado:
                     nome_pdf = f"cotacoes_{datetime.now().strftime('%d-%m-%Y')}.pdf"
 
                 # ⚠️ IMPORTANTE: usar df ORIGINAL (com data e classe)
-                gerar_pdf(df_tabela, nome_pdf)
+                gerar_pdf(df_tabela.copy(), nome_pdf)
         
                 with open(nome_pdf, "rb") as f:
                     st.download_button(
