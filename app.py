@@ -84,7 +84,20 @@ def gerar_pdf(df, nome_pdf):
     styles = getSampleStyleSheet()
     elementos = []
 
-    df["classe"] = df["classe"].fillna("SEM CLASSE")
+    df = df.copy()
+
+    df["classe"] = df["classe"].fillna("SEM CLASSE").astype(str).str.strip()
+    df["produto"] = df["produto"].astype(str).str.strip().str.upper()
+    
+    ordem_classes = ["Hortaliças", "Frutas", "Especiarias", "Cereais", "SEM CLASSE"]
+    
+    df["ordem_classe"] = pd.Categorical(
+        df["classe"],
+        categories=ordem_classes,
+        ordered=True
+    )
+    
+    df = df.sort_values(["ordem_classe", "produto"])
 
     if "data" not in df.columns:
         raise ValueError("Coluna data não existe")
@@ -92,7 +105,7 @@ def gerar_pdf(df, nome_pdf):
     if "classe" not in df.columns:
         raise ValueError("Coluna classe não existe")
 
-    classes = df["classe"].dropna().astype(str).str.strip().unique()
+    classes = [c for c in ordem_classes if c in df["classe"].values]
 
     # 🔥 GARANTIA EXTRA
     if len(classes) == 0:
@@ -100,6 +113,7 @@ def gerar_pdf(df, nome_pdf):
 
     for i, c in enumerate(classes):
         dados_classe = df[df["classe"] == c].copy()
+        dados_classe = dados_classe.drop(columns=["ordem_classe"], errors="ignore")
 
         # 🔹 evita erro se não tiver dados
         if dados_classe.empty:
@@ -685,56 +699,56 @@ if st.session_state.logado:
     elif opcao == "Cotação do Dia":
 
         st.title("📊 Cotação do Dia")
-
+    
         # garante session_state
         if "confirmar_cotacao" not in st.session_state:
             st.session_state.confirmar_cotacao = False
         
         data = st.date_input("Data", value=pd.to_datetime("today"))
         
-        # PRODUTOS
+        # ================= PRODUTOS =================
         try:
             produtos = carregar_produtos()
-
+    
+            # 🔹 ordem correta das classes
             ordem_classes = {
-                "HORTALIÇAS": 1,
-                "FRUTAS": 2,
-                "ESPECIARIAS": 3,
-                "CEREAIS": 4,
-                "OUTROS": 99
+                "Hortaliças": 1,
+                "Frutas": 2,
+                "Especiarias": 3,
+                "Cereais": 4,
+                "SEM CLASSE": 99
             }
-            
-            produtos["classe"] = produtos["classe"].str.upper().fillna("OUTROS")
-            
-            # cria ordem numérica da classe
-            produtos["ordem_classe"] = produtos["classe"].map(ordem_classes)
-            
-            # ordena primeiro por classe, depois por nome
-            produtos = produtos.sort_values(
-                by=["ordem_classe", "nome"],
-                ascending=[True, True]
-            )
-            
-            # remove coluna auxiliar
+    
+            # 🔹 padroniza classe
+            produtos["classe"] = produtos["classe"].fillna("SEM CLASSE").astype(str).str.strip()
+    
+            # 🔹 cria ordem
+            produtos["ordem_classe"] = produtos["classe"].map(ordem_classes).fillna(99)
+    
+            # 🔹 ordena
+            produtos = produtos.sort_values(["ordem_classe", "nome"])
+    
+            # 🔹 remove auxiliar
             produtos = produtos.drop(columns=["ordem_classe"])
+    
         except Exception as e:
             st.error(f"Erro ao carregar produtos: {e}")
             st.stop()
-        
+    
+        # 🔹 validação
         if produtos.empty:
             st.warning("Cadastre produtos primeiro!")
             st.stop()
-        
-        # 🔥 BUSCAR TODAS AS COTAÇÕES DE UMA VEZ
+    
+        # ================= COTAÇÕES =================
         try:
             resp = supabase.table("cotacoes")\
                 .select("produto, preco_min, preco_max, valor_kg, data")\
                 .order("data", desc=True)\
                 .execute()
-        
+    
             df_ultimas = pd.DataFrame(resp.data)
-        
-            # 🔹 Tratamento seguro dos dados
+    
             if not df_ultimas.empty and "data" in df_ultimas.columns:
                 df_ultimas["data"] = pd.to_datetime(df_ultimas["data"], errors="coerce")
                 df_ultimas = df_ultimas.dropna(subset=["data"])
@@ -742,32 +756,31 @@ if st.session_state.logado:
                 df_ultimas = df_ultimas.drop_duplicates(subset="produto", keep="first")
             else:
                 df_ultimas = pd.DataFrame()
-        
+    
         except Exception as e:
             st.error(f"Erro ao carregar cotações: {e}")
             df_ultimas = pd.DataFrame()
-        
+    
+        # ================= LOOP =================
         cotacoes = []
-        
+    
         for _, row in produtos.iterrows():
             produto = str(row["nome"]).strip().upper()
-          
-            # pega última cotação do produto atual
+    
             if not df_ultimas.empty:
                 ultima = df_ultimas[df_ultimas["produto"] == produto]
             else:
                 ultima = pd.DataFrame()
-            
-            # ÚLTIMA COTAÇÃO      
+    
             col1, col2 = st.columns([1, 2])
-        
+    
             with col1:
                 st.write(produto)
-        
+    
             with col2:
-        
+    
                 key = f"precos_{produto}"
-        
+    
                 if key not in st.session_state:
                     if not ultima.empty:
                         st.session_state[key] = [
@@ -776,21 +789,21 @@ if st.session_state.logado:
                         ]
                     else:
                         st.session_state[key] = []
-        
+    
                 precos = st.session_state[key]
-        
+    
                 b1, b2 = st.columns(2)
-        
+    
                 with b1:
                     if st.button("➕ Adicionar", key=f"add_{produto}"):
                         precos.append(0.0)
-        
+    
                 with b2:
                     if precos and st.button("➖ Remover", key=f"rem_{produto}"):
                         precos.pop()
-        
+    
                 cols = st.columns(3)
-        
+    
                 for i in range(len(precos)):
                     with cols[i % 3]:
                         precos[i] = st.number_input(
@@ -798,40 +811,36 @@ if st.session_state.logado:
                             value=precos[i],
                             key=f"{produto}_{i}"
                         )
-        
+    
                 precos_validos = [p for p in precos if p > 0]
-        
+    
                 if precos_validos:
                     pmin = min(precos_validos)
                     pmax = max(precos_validos)
                     preco_medio = sum(precos_validos) / len(precos_validos)
                 else:
                     pmin = pmax = preco_medio = 0
-        
+    
                 valor_kg = (preco_medio / row["kg"]) if row["kg"] > 0 else 0
-        
+    
                 st.caption(
                     f"🔽 Mín: {pmin:.2f} | 🔼 Máx: {pmax:.2f} | 📊 Médio: {preco_medio:.2f} | ⚖️ Kg: {valor_kg:.2f}"
                 )
-        
+    
                 if not ultima.empty:
                     valor_kg_anterior = float(ultima.iloc[0]["valor_kg"])
-        
+    
                     if valor_kg_anterior > 0:
                         variacao = ((valor_kg - valor_kg_anterior) / valor_kg_anterior) * 100
-        
+    
                         if abs(variacao) > 30:
                             st.warning(f"⚠️ Variação alta: {variacao:.1f}%")
-        
+    
             st.divider()
-        
+    
             cotacoes.append((produto, row["classe"], row["unidade"], row["kg"], pmin, pmax))
-
-        # 🔥 validação antes de qualquer PDF ou salvamento
-        if len(cotacoes) == 0:
-            st.error("Nenhuma cotação válida para gerar PDF.")
-            st.stop()
-        # SALVAR
+    
+        # ================= SALVAR =================
         if not st.session_state.confirmar_cotacao:
     
             if st.button("💾 Salvar Cotação"):
@@ -840,17 +849,17 @@ if st.session_state.logado:
         else:
             st.warning("Confirmar salvamento?")
             c1, c2 = st.columns(2)
-        
+    
             with c1:
                 if st.button("✅ Confirmar"):
-        
+    
                     try:
                         dados_insert = []
-        
+    
                         for c in cotacoes:
                             preco_medio = (c[4] + c[5]) / 2
                             valor_kg = preco_medio / c[3] if c[3] > 0 else 0
-        
+    
                             dados_insert.append({
                                 "data": data.strftime("%Y-%m-%d"),
                                 "classe": c[1] if c[1] else "SEM CLASSE",
@@ -862,164 +871,21 @@ if st.session_state.logado:
                                 "preco_medio": preco_medio,
                                 "valor_kg": valor_kg
                             })
-        
-                        # Inserção no Supabase
+    
                         response = supabase.table("cotacoes").insert(dados_insert).execute()
-        
+    
                         if response.data:
                             st.success("Cotação salva com sucesso!")
                             st.cache_data.clear()
                         else:
                             st.error("Erro ao salvar dados.")
-        
+    
                     except Exception as e:
                         st.error(f"Erro ao salvar: {e}")
-        
+    
                     st.session_state.confirmar_cotacao = False
                     st.rerun()
-        
+    
             with c2:
                 if st.button("❌ Cancelar"):
                     st.session_state.confirmar_cotacao = False
-    # =====================
-
-    # ===================== VISUALIZAR DADOS 
-    elif opcao == "Visualizar Dados":
-
-        st.title("📋 Cotações")
-
-        try:
-            resp = supabase.table("cotacoes")\
-                .select("data, classe, produto, unidade, kg, preco_min, preco_max, preco_medio, valor_kg")\
-                .execute()
-        
-            df = pd.DataFrame(resp.data)
-        
-            if not df.empty:
-                df["produto"] = df["produto"].astype(str).str.strip().str.upper()
-                df["classe"] = df["classe"].astype(str).str.strip()
-        
-        except Exception as e:
-            st.error(f"Erro ao carregar dados: {e}")
-            st.stop()
-    
-        if df.empty:
-            st.warning("Sem dados")
-            st.stop()
-    
-        # DATA
-        df["data"] = pd.to_datetime(df["data"], errors="coerce")
-        df = df.dropna(subset=["data"])
-        
-        # 🔹 garantir kg inteiro (forma segura)
-        if "kg" in df.columns:
-            df["kg"] = pd.to_numeric(df["kg"], errors="coerce").fillna(0).astype(int)
-    
-        # FILTROS
-        col1, col2, col3 = st.columns(3)
-    
-        hoje = datetime.now().date()
-
-        with col1:
-            data_inicio = st.date_input("Data inicial", value=hoje)
-        
-        with col2:
-            data_fim = st.date_input("Data final", value=hoje)
-    
-        with col3:
-            classe = st.selectbox(
-                "Classe",
-                ["Todas", "Hortaliças", "Frutas", "Especiarias", "Cereais"]
-            )
-    
-        # FILTRO
-        data_inicio = pd.to_datetime(data_inicio)
-        data_fim = pd.to_datetime(data_fim)
-        
-        df["data"] = pd.to_datetime(df["data"], errors="coerce").dt.date
-
-        df = df[(df["data"] >= data_inicio.date()) & (df["data"] <= data_fim.date())]
-    
-        if classe != "Todas":
-            df = df[df["classe"] == classe]
-        
-        # 🔹 limpa possíveis espaços (evita erro de ordenação)
-        df["classe"] = df["classe"].astype(str).str.strip()
-        df["produto"] = df["produto"].astype(str).str.strip()
-        
-        # 🔹 ordem personalizada das classes
-        ordem_classes = ["Hortaliças", "Frutas", "Especiarias", "Cereais"]
-        
-        df["classe"] = pd.Categorical(
-            df["classe"],
-            categories=ordem_classes,
-            ordered=True
-        )
-        
-        # 🔹 ordena por classe e depois por produto (alfabético)
-        df = df.sort_values(["classe", "produto"])
-        
-        # 🔹 REMOVE DATA
-        df_tabela = df.drop(columns=[c for c in ["id", "data"] if c in df.columns]).copy()
-
-        # 🔹 colunas de preço
-        cols_preco = ["preco_min", "preco_max", "preco_medio", "valor_kg"]
-        
-        for col in cols_preco:
-            if col in df_tabela.columns:
-                df_tabela[col] = df_tabela[col].apply(
-                    lambda x: f"{x:.2f}".replace(".", ",") if pd.notnull(x) else ""
-                )
-    
-        st.dataframe(df_tabela, use_container_width=True)
-
-        # BOTÃO PDF (igual ao antigo)
-        gerar_pdf_click = st.button("📄 Gerar PDF")
-    
-        # EXCEL
-        if st.session_state.get("nivel") == "admin":
-    
-            try:
-                buffer = io.BytesIO()
-                df_tabela.to_excel(buffer, index=False, engine="openpyxl")
-                buffer.seek(0)
-    
-                st.download_button(
-                    "📥 Baixar Excel",
-                    buffer,
-                    file_name=f"cotacoes_{datetime.now().strftime('%d-%m-%Y')}.xlsx"
-                )
-    
-            except Exception as e:
-                st.error(f"Erro ao gerar Excel: {e}")
-    
-        # PDF
-        if gerar_pdf_click:
-        
-            try:
-                # Proteção contra PDF vazio
-                if df_tabela.empty:
-                    st.error("Nenhum dado disponível para gerar PDF.")
-                    st.stop()
-                
-                if not df.empty:
-                    data_ref = df["data"].max()
-                    nome_pdf = f"cotacoes_{data_ref.strftime('%d-%m-%Y')}.pdf"
-                else:
-                    nome_pdf = f"cotacoes_{datetime.now().strftime('%d-%m-%Y')}.pdf"
-
-                # ⚠️ IMPORTANTE: usar df ORIGINAL (com data e classe)
-                df_pdf = df.copy()
-                df_pdf["classe"] = df_pdf["classe"].astype(str).str.strip().str.upper()
-                
-                gerar_pdf(df_pdf, nome_pdf)
-        
-                with open(nome_pdf, "rb") as f:
-                    st.download_button(
-                        "📥 Baixar PDF",
-                        f,
-                        file_name=nome_pdf
-                    )
-        
-            except Exception as e:
-                st.error(f"Erro ao gerar PDF: {e}")
