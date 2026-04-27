@@ -939,8 +939,8 @@ if st.session_state.logado:
         st.dataframe(df_tabela, use_container_width=True)
 
 
-        st.write("COLUNAS:", df_tabela.columns)
-        st.write(df_tabela.head(3))
+        st.write("LINHAS:", len(df_tabela))
+        st.write(df_tabela.head())
         
         
         # BOTÃO PDF (igual ao antigo)
