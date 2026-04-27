@@ -491,7 +491,7 @@ if st.session_state.logado:
         
             try:
                 supabase.table("produtos").insert({
-                    "nome": nome.strip().upper()
+                    "nome": nome.strip().upper(),
                     "classe": classe,
                     "unidade": unidade,
                     "kg": kg
