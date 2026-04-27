@@ -640,25 +640,15 @@ if st.session_state.logado:
                             .eq("id", int(dados["id"]))\
                             .execute()
             
-                        st.session_state.msg = ("success", "Produto excluído!")            
+                        st.session_state.msg = ("success", "Produto excluído!")
+            
+                        # 🔥 limpa cache
                         st.cache_data.clear()
             
                     except Exception as e:
                         st.session_state.msg = ("error", str(e))
             
-                    st.rerun()
-            
-                    try:
-                        supabase.table("produtos")\
-                            .delete()\
-                            .eq("id", int(dados["id"]))\
-                            .execute()
-            
-                        st.session_state.msg = ("success", "Produto excluído!")
-            
-                    except Exception as e:
-                        st.session_state.msg = ("error", str(e))
-            
+                    # 🔥 recarrega tela (UMA VEZ SÓ)
                     st.rerun()
     # =====================
 
