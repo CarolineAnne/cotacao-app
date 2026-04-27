@@ -493,7 +493,25 @@ if st.session_state.logado:
         try:
             response = supabase.table("produtos").select("*").execute()
             df = pd.DataFrame(response.data)
-        
+            
+            if not df.empty:
+            
+                # 🔹 limpa possíveis espaços
+                df["classe"] = df["classe"].astype(str).str.strip()
+                df["nome"] = df["nome"].astype(str).str.strip()
+            
+                # 🔹 ordem personalizada das classes
+                ordem_classes = ["Hortaliças", "Frutas", "Especiarias", "Cereais"]
+            
+                df["classe"] = pd.Categorical(
+                    df["classe"],
+                    categories=ordem_classes,
+                    ordered=True
+                )
+            
+                # 🔹 ordena por classe e depois nome do produto
+                df = df.sort_values(["classe", "nome"])
+            
             st.dataframe(df, use_container_width=True)
         
         except Exception as e:
