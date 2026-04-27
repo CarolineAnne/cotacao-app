@@ -510,14 +510,14 @@ if st.session_state.logado:
                 )
             
                 # 🔹 ordena por classe e depois nome do produto
-                df = df.sort_values(["classe", "nome"])
+                df = df.sort_values(["classe", "nome"], na_position="last")
             
-            st.dataframe(df, use_container_width=True)
-        
-        except Exception as e:
-            st.error(f"Erro ao carregar produtos: {e}")
-        
-        st.divider()
+                    st.dataframe(df, use_container_width=True)
+                
+                except Exception as e:
+                    st.error(f"Erro ao carregar produtos: {e}")
+                
+                st.divider()
     
         # EDITAR / EXCLUIR
         if not df.empty:
@@ -534,7 +534,7 @@ if st.session_state.logado:
             
             if st.session_state.produto_anterior != produto_selecionado:
                 st.session_state.edit_prod_nome = dados["nome"]
-                st.session_state.edit_classe = dados["classe"]
+                st.session_state.edit_classe = str(dados["classe"])
                 st.session_state.edit_unidade = dados["unidade"]
                 st.session_state.edit_kg = float(dados["kg"])
                 st.session_state.produto_anterior = produto_selecionado
@@ -542,19 +542,25 @@ if st.session_state.logado:
             # 🔹 campos editáveis sincronizados
             novo_nome = st.text_input("Nome", key="edit_prod_nome")
             
+            opcoes_classe = ["Hortaliças", "Frutas", "Especiarias", "Cereais"]
+
             nova_classe = st.selectbox(
                 "Classe",
-                ["Hortaliças", "Frutas", "Especiarias", "Cereais"],
+                opcoes_classe,
+                index=opcoes_classe.index(st.session_state.edit_classe),
                 key="edit_classe"
             )
             
+            opcoes_unidade = ["Kg", "Cx", "Sc", "Mo-4", "Mo-5", "Lt", "Centro", "Fd"]
+
             nova_unidade = st.selectbox(
                 "Unidade",
-                ["Kg", "Cx", "Sc", "Mo-4", "Mo-5", "Lt", "Centro", "Fd"],
+                opcoes_unidade,
+                index=opcoes_unidade.index(st.session_state.edit_unidade),
                 key="edit_unidade"
             )
             
-            novo_kg = st.number_input("Kg", key="edit_kg")
+            novo_kg = st.number_input("Kg", step=1, format="%d", key="edit_kg")
     
             col1, col2 = st.columns(2)
     
@@ -876,8 +882,11 @@ if st.session_state.logado:
         if gerar_pdf_click:
     
             try:
+                if not df.empty:
                 data_ref = df["data"].max()
                 nome_pdf = f"cotacoes_{data_ref.strftime('%d-%m-%Y')}.pdf"
+            else:
+                nome_pdf = f"cotacoes_{datetime.now().strftime('%d-%m-%Y')}.pdf"
     
                 # ⚠️ IMPORTANTE: usar df ORIGINAL (com data e classe)
                 gerar_pdf(df, nome_pdf)
