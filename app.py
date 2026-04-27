@@ -12,6 +12,18 @@ from reportlab.lib.styles import getSampleStyleSheet
 from supabase import create_client
 # ====================================================
 
+@st.cache_data(ttl=60)
+def carregar_produtos():
+    resp = supabase.table("produtos").select("*").execute()
+    return pd.DataFrame(resp.data)
+
+@st.cache_data(ttl=60)
+def carregar_cotacoes():
+    resp = supabase.table("cotacoes")\
+        .select("produto, preco_min, preco_max, valor_kg, data")\
+        .execute()
+    return pd.DataFrame(resp.data)
+
 # ================== CONEXÃO =========================
 url = "https://yovuvhuubopujagvukki.supabase.co"
 key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlvdnV2aHV1Ym9wdWphZ3Z1a2tpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY4MjA1MTIsImV4cCI6MjA5MjM5NjUxMn0.ywT2j8efoK9hnGcckTVrPBa4P7Qi4WkJxkap5bSjLUM"
@@ -93,11 +105,12 @@ def gerar_pdf(df, nome_pdf):
         dados_classe = dados_classe.rename(columns=nomes_colunas)
 
         # 🔹 FORMATA NÚMEROS (2 CASAS DECIMAIS + VÍRGULA)
-        for col in dados_classe.columns:
-            if pd.api.types.is_numeric_dtype(dados_classe[col]):
-                dados_classe[col] = dados_classe[col].apply(
-                    lambda x: f"{x:.2f}".replace(".", ",") if pd.notnull(x) else ""
-                )
+        cols_num = dados_classe.select_dtypes(include="number").columns
+
+        for col in cols_num:
+            dados_classe[col] = dados_classe[col].map(
+                lambda x: f"{x:.2f}".replace(".", ",") if pd.notnull(x) else ""
+            )
 
         tabela_dados = [list(dados_classe.columns)] + dados_classe.values.tolist()
 
@@ -566,8 +579,7 @@ if st.session_state.logado:
         
         # PRODUTOS
         try:
-            resp = supabase.table("produtos").select("*").execute()
-            produtos = pd.DataFrame(resp.data)
+            produtos = carregar_produtos()
         except Exception as e:
             st.error(f"Erro ao carregar produtos: {e}")
             st.stop()
@@ -576,25 +588,40 @@ if st.session_state.logado:
             st.warning("Cadastre produtos primeiro!")
             st.stop()
         
+        # 🔥 BUSCAR TODAS AS COTAÇÕES DE UMA VEZ
+        try:
+            resp = supabase.table("cotacoes")\
+                .select("produto, preco_min, preco_max, valor_kg, data")\
+                .order("data", desc=True)\
+                .execute()
+        
+            df_ultimas = pd.DataFrame(resp.data)
+        
+            # 🔹 Tratamento seguro dos dados
+            if not df_ultimas.empty and "data" in df_ultimas.columns:
+                df_ultimas["data"] = pd.to_datetime(df_ultimas["data"], errors="coerce")
+                df_ultimas = df_ultimas.dropna(subset=["data"])
+                df_ultimas = df_ultimas.sort_values("data", ascending=False)
+                df_ultimas = df_ultimas.drop_duplicates(subset="produto", keep="first")
+            else:
+                df_ultimas = pd.DataFrame()
+        
+        except Exception as e:
+            st.error(f"Erro ao carregar cotações: {e}")
+            df_ultimas = pd.DataFrame()
+        
         cotacoes = []
         
         for _, row in produtos.iterrows():
             produto = row["nome"]
-        
-            # ÚLTIMA COTAÇÃO
-            try:
-                resp = supabase.table("cotacoes")\
-                    .select("preco_min, preco_max, valor_kg")\
-                    .eq("produto", produto)\
-                    .order("data", desc=True)\
-                    .limit(1)\
-                    .execute()
-        
-                ultima = pd.DataFrame(resp.data)
-        
-            except Exception:
+          
+            # pega última cotação do produto atual
+            if not df_ultimas.empty:
+                ultima = df_ultimas[df_ultimas["produto"] == produto]
+            else:
                 ultima = pd.DataFrame()
-        
+            
+            # ÚLTIMA COTAÇÃO      
             col1, col2 = st.columns([1, 2])
         
             with col1:
@@ -719,7 +746,9 @@ if st.session_state.logado:
         st.title("📋 Cotações")
     
         try:
-            resp = supabase.table("cotacoes").select("*").execute()
+            resp = supabase.table("cotacoes")\
+                .select("data, classe, produto, unidade, kg, preco_min, preco_max, preco_medio, valor_kg")\
+                .execute()
             df = pd.DataFrame(resp.data)
     
         except Exception as e:
@@ -750,10 +779,10 @@ if st.session_state.logado:
             )
     
         # FILTRO
-        df = df[
-            (df["data"] >= pd.to_datetime(data_inicio)) &
-            (df["data"] <= pd.to_datetime(data_fim))
-        ]
+        data_inicio = pd.to_datetime(data_inicio)
+        data_fim = pd.to_datetime(data_fim)
+        
+        df = df[(df["data"] >= data_inicio) & (df["data"] <= data_fim)]
     
         if classe != "Todas":
             df = df[df["classe"] == classe]
