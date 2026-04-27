@@ -509,15 +509,15 @@ if st.session_state.logado:
                     ordered=True
                 )
             
-                # 🔹 ordena por classe e depois nome do produto
-                df = df.sort_values(["classe", "nome"], na_position="last")
-            
-                    st.dataframe(df, use_container_width=True)
-                
-                except Exception as e:
-                    st.error(f"Erro ao carregar produtos: {e}")
-                
-                st.divider()
+        # 🔹 ordena por classe e depois nome do produto
+        df = df.sort_values(["classe", "nome"], na_position="last")
+    
+            st.dataframe(df, use_container_width=True)
+        
+        except Exception as e:
+            st.error(f"Erro ao carregar produtos: {e}")
+        
+        st.divider()
     
         # EDITAR / EXCLUIR
         if not df.empty:
