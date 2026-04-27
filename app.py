@@ -524,26 +524,37 @@ if st.session_state.logado:
     
             st.subheader("✏️ Editar / Excluir")
     
-            produto_selecionado = st.selectbox("Produto", df["nome"])
+            produto_selecionado = st.selectbox("Produto", df["nome"], key="select_prod")
+
             dados = df[df["nome"] == produto_selecionado].iloc[0]
-    
-            novo_nome = st.text_input("Nome", value=dados["nome"], key="edit_prod_nome")
-    
+            
+            # 🔹 controle de mudança de produto
+            if "produto_anterior" not in st.session_state:
+                st.session_state.produto_anterior = None
+            
+            if st.session_state.produto_anterior != produto_selecionado:
+                st.session_state.edit_prod_nome = dados["nome"]
+                st.session_state.edit_classe = dados["classe"]
+                st.session_state.edit_unidade = dados["unidade"]
+                st.session_state.edit_kg = float(dados["kg"])
+                st.session_state.produto_anterior = produto_selecionado
+            
+            # 🔹 campos editáveis sincronizados
+            novo_nome = st.text_input("Nome", key="edit_prod_nome")
+            
             nova_classe = st.selectbox(
                 "Classe",
                 ["Hortaliças", "Frutas", "Especiarias", "Cereais"],
-                index=["Hortaliças", "Frutas", "Especiarias", "Cereais"].index(dados["classe"]),
                 key="edit_classe"
             )
-    
+            
             nova_unidade = st.selectbox(
                 "Unidade",
                 ["Kg", "Cx", "Sc", "Mo-4", "Mo-5", "Lt", "Centro", "Fd"],
-                index=["Kg", "Cx", "Sc", "Mo-4", "Mo-5", "Lt", "Centro", "Fd"].index(dados["unidade"]),
                 key="edit_unidade"
             )
-    
-            novo_kg = st.number_input("Kg", value=float(dados["kg"]))
+            
+            novo_kg = st.number_input("Kg", key="edit_kg")
     
             col1, col2 = st.columns(2)
     
