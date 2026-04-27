@@ -792,7 +792,16 @@ if st.session_state.logado:
             df = df[df["classe"] == classe]
     
         # 🔥 IGUAL AO ANTIGO (REMOVE DATA)
-        df_tabela = df.drop(columns=[c for c in ["id", "data"] if c in df.columns]).round(2)
+        df_tabela = df.drop(columns=[c for c in ["id", "data"] if c in df.columns]).copy()
+
+        # 🔹 colunas de preço
+        cols_preco = ["preco_min", "preco_max", "preco_medio", "valor_kg"]
+        
+        for col in cols_preco:
+            if col in df_tabela.columns:
+                df_tabela[col] = df_tabela[col].apply(
+                    lambda x: f"{x:.2f}".replace(".", ",") if pd.notnull(x) else ""
+                )
     
         st.dataframe(df_tabela, use_container_width=True)
     
