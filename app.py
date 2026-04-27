@@ -660,6 +660,21 @@ if st.session_state.logado:
         # PRODUTOS
         try:
             produtos = carregar_produtos()
+
+            ordem_classes = {
+                "HORTALIÇAS": 1,
+                "FRUTAS": 2,
+                "ESPECIARIAS": 3,
+                "CEREAIS": 4,
+                "OUTROS": 99
+            }
+            
+            produtos["classe"] = produtos["classe"].str.upper().fillna("OUTROS")
+            
+            produtos = produtos.sort_values(
+                by=["classe", "nome"],
+                key=lambda col: col.map(ordem_classes) if col.name == "classe" else col
+            )
         except Exception as e:
             st.error(f"Erro ao carregar produtos: {e}")
             st.stop()
