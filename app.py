@@ -940,11 +940,6 @@ if st.session_state.logado:
     
         st.dataframe(df_tabela, use_container_width=True)
 
-
-        st.write("LINHAS:", len(df_tabela))
-        st.write(df_tabela.head())
-        
-        
         # BOTÃO PDF (igual ao antigo)
         gerar_pdf_click = st.button("📄 Gerar PDF")
     
