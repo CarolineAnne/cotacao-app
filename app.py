@@ -452,8 +452,6 @@ if st.session_state.logado:
         st.title("📊 Sistema de Cotação")
         st.caption("Utilize o menu lateral para navegar pelas funcionalidades.")
 
-        if opcao == "Início":
-
         # 🔥 FUNDO SOMENTE NA TELA INICIAL
         st.markdown(
             """
