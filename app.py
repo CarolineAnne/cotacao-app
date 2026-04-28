@@ -365,7 +365,7 @@ if st.session_state.logado:
 
     opcao = st.sidebar.selectbox("Opções", menu)
 
-    # 🔥 FUNDO SOMENTE NA TELA INICIAL
+    # 🔥 FUNDO SOMENTE NA TELA INICIAL (SUAVIZADO)
     if opcao == "Início":
         st.markdown(
             """
@@ -376,6 +376,15 @@ if st.session_state.logado:
                 background-position: center;
                 background-size: cover;
                 background-attachment: fixed;
+            }
+    
+            /* 🔥 CAMADA CLARA (EFEITO SUAVE) */
+            .stApp::before {
+                content: "";
+                position: fixed;
+                inset: 0;
+                background: rgba(255, 255, 255, 0.4); /* AQUI controla suavidade */
+                pointer-events: none;
             }
             </style>
             """,
