@@ -307,7 +307,7 @@ st.markdown(
     }
 
     [data-testid="stSidebar"] {
-        background-color: rgba(0, 0, 0, 0.12);
+        background-color: rgba(0, 0, 0, 0.6);
     }
 
     .block-container {
@@ -402,7 +402,7 @@ if st.session_state.logado:
                 left: 0;
                 width: 100%;
                 height: 100%;
-                background: rgba(0,0,0,0.35);
+                background: rgba(0,0,0,0.6);
                 pointer-events: none;
                 z-index: 0;
             }
