@@ -318,53 +318,27 @@ def gerar_pdf(df, nome_pdf):
 # ================== CONFIG ==========================
 st.set_page_config(page_title="Sistema de Cotação", layout="wide")
 
-def get_video_base64(path):
-    with open(path, "rb") as f:
-        return base64.b64encode(f.read()).decode()
-
-video_base64 = get_video_base64("capa.mp4")
-
 st.markdown(
-    f"""
+    """
     <style>
-    .video-bg {{
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100vw;
-        height: 100vh;
-        object-fit: cover;
-        z-index: -2;
-    }}
+    .stApp {
+        background-image: url("https://media2.giphy.com/media/v1.Y2lkPTc5MGI3NjExeGZhcHBta2hsdTh2bmY0Y3h3dWUwMW40eXNiMGozOW1rYjRmNGtvZiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3bsn2kadghWrYMXneO/giphy.gif");
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+        background-attachment: fixed;
+    }
 
-    .stApp::before {{
-        content: "";
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.45);
-        z-index: -1;
-    }}
-
-    [data-testid="stSidebar"] {{
+    [data-testid="stSidebar"] {
         background-color: rgba(0, 0, 0, 0.6);
-    }}
+    }
 
-    .block-container {{
-        position: relative;
-        z-index: 1;
+    .block-container {
         background: rgba(0, 0, 0, 0.25);
-        backdrop-filter: blur(6px);
         padding: 20px;
         border-radius: 10px;
-    }}
+    }
     </style>
-
-    <video autoplay muted loop playsinline class="video-bg">
-        <source src="data:video/mp4;base64,{video_base64}" type="video/mp4">
-    </video>
     """,
     unsafe_allow_html=True
 )
