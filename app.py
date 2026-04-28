@@ -1160,8 +1160,6 @@ if st.session_state.logado:
                 st.error(f"Erro ao listar buckets: {e}")
         
             st.stop()  # 🔥 para aqui só para testar
-        
-            arquivo_pdf = st.file_uploader(
     
             arquivo_pdf = st.file_uploader(
                 "Anexar PDF",
