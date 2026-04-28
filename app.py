@@ -390,14 +390,14 @@ if st.session_state.logado:
         st.markdown(
             """
             <style>
-            /* MENU */
+            /* 🔥 MENU LATERAL (TEXTOS BRANCOS) */
             [data-testid="stSidebar"] * {
-                color: var(--text-color) !important;
+                color: white !important;
             }
         
-            /* TÍTULOS */
+            /* 🔥 TÍTULOS (INÍCIO E PÁGINAS) */
             h1, h2, h3 {
-                color: var(--text-color) !important;
+                color: white !important;
             }
             </style>
             """,
