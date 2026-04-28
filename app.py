@@ -322,7 +322,7 @@ st.markdown(
     """
     <style>
     .stApp {
-        background: url("SEU_GIF_AQUI") no-repeat center center fixed;
+        background: url("capa.gif") no-repeat center center fixed;
         background-size: cover;
     }
     </style>
