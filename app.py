@@ -316,66 +316,29 @@ def gerar_pdf(df, nome_pdf):
 # ====================================================
 
 # ================== CONFIG ==========================
-st.set_page_config(page_title="Sistema de Cotação", layout="wide")
+st.set_page_config(
+    page_title="Sistema de Cotação",
+    layout="wide"
+)
 
+# 🔥 Estilos gerais que valem para todas as telas
 st.markdown(
     """
     <style>
-    .stApp {
-        background-image: url("https://media2.giphy.com/media/v1.Y2lkPTc5MGI3NjExeGZhcHBta2hsdTh2bmY0Y3h3dWUwMW40eXNiMGozOW1rYjRmNGtvZiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3bsn2kadghWrYMXneO/giphy.gif");
-        background-size: cover;
-        background-position: center;
-        background-repeat: no-repeat;
-        background-attachment: fixed;
+    /* barra superior transparente */
+    [data-testid="stHeader"] {
+        background: transparent;
     }
 
+    /* sidebar transparente */
     [data-testid="stSidebar"] {
         background-color: rgba(0, 0, 0, 0.6);
     }
 
+    /* conteúdo */
     .block-container {
-        background: rgba(0, 0, 0, 0.4);
         padding: 20px;
         border-radius: 10px;
-    }
-    </style>
-    """,
-    unsafe_allow_html=True
-)
-
-st.markdown(
-    """
-    <style>
-    /* 🔥 REMOVE FUNDO DO HEADER (barra preta de cima) */
-    header {
-        background-color: rgba(0, 0, 0, 0) !important;
-    }
-
-    /* 🔥 REMOVE SOMBRA (opcional, mas melhora o visual) */
-    header::before {
-        background: none !important;
-    }
-
-    /* 🔥 DEIXA TOTALMENTE TRANSPARENTE */
-    [data-testid="stHeader"] {
-        background: transparent;
-    }
-    </style>
-    """,
-    unsafe_allow_html=True
-)
-
-st.markdown(
-    """
-    <style>
-    /* 🔥 largura da sidebar */
-    section[data-testid="stSidebar"] {
-        width: 220px !important;  /* ajuste aqui */
-    }
-
-    /* 🔥 conteúdo da sidebar acompanha */
-    section[data-testid="stSidebar"] > div {
-        width: 220px !important;
     }
     </style>
     """,
@@ -464,16 +427,32 @@ if st.session_state.logado:
         st.title("📊 Sistema de Cotação")
         st.caption("Utilize o menu lateral para navegar pelas funcionalidades.")
 
-        # espaço visual
-        #st.divider()
+        if opcao == "Início":
 
-        # imagem com verificação mais segura
-        #img_path = "home.png"
+    # 🔥 FUNDO SOMENTE NA TELA INICIAL
+    st.markdown(
+        """
+        <style>
+        .stApp {
+            background: url("https://media2.giphy.com/media/v1.Y2lkPTc5MGI3NjExeGZhcHBta2hsdTh2bmY0Y3h3dWUwMW40eXNiMGozOW1rYjRmNGtvZiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3bsn2kadghWrYMXneO/giphy.gif") no-repeat center center fixed;
+            background-size: cover;
+        }
 
-        #if os.path.exists(img_path):
-        #    st.image(img_path, use_container_width=True)
-        #else:
-        #    st.warning("Imagem 'home.png' não encontrada no diretório do projeto.")
+        .stApp::before {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.4);
+        }
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
+
+    st.title("Sistema de Cotação")
     # =====================
 
     # ================== CADASTRO DE USUÁRIOS
