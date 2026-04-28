@@ -321,16 +321,34 @@ def gerar_pdf(df, nome_pdf):
 st.set_page_config(page_title="Sistema de Cotação", layout="wide")
 
 # 🔥 FUNDO GIF
-gif_base64 = get_base64("capa.gif")
-
 st.markdown(
     """
     <style>
-    .stApp {
-        background: url("https://media2.giphy.com/media/v1.Y2lkPTc5MGI3NjExeGZhcHBta2hsdTh2bmY0Y3h3dWUwMW40eXNiMGozOW1rYjRmNGtvZiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3bsn2kadghWrYMXneO/giphy.gif") no-repeat center center fixed;
-        background-size: cover;
+    /* GIF CENTRALIZADO SEM DISTORÇÃO */
+    .gif-bg {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        height: 100%;
+        width: auto;
+        z-index: -2;
+    }
+
+    /* 🔥 CAMADA ESCURA */
+    .stApp::before {
+        content: "";
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.4);
+        z-index: -1;
     }
     </style>
+
+    <img src="https://media2.giphy.com/media/v1.Y2lkPTc5MGI3NjExeGZhcHBta2hsdTh2bmY0Y3h3dWUwMW40eXNiMGozOW1rYjRmNGtvZiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3bsn2kadghWrYMXneO/giphy.gif" class="gif-bg">
     """,
     unsafe_allow_html=True
 )
