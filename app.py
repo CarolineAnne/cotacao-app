@@ -411,6 +411,31 @@ if st.session_state.logado:
 
     opcao = st.sidebar.selectbox("Opções", menu)
 
+    # 🔥 CONTROLE DE FUNDO (AQUI É O LUGAR CERTO)
+    if opcao == "Início":
+        st.markdown(
+            """
+            <style>
+            .stApp {
+                background: url("SEU_GIF") no-repeat center center fixed;
+                background-size: cover;
+            }
+            </style>
+            """,
+            unsafe_allow_html=True
+        )
+    else:
+        st.markdown(
+            """
+            <style>
+            .stApp {
+                background: #0E1117;
+            }
+            </style>
+            """,
+            unsafe_allow_html=True
+        )
+
     st.sidebar.write(f"👤 {st.session_state.get('nome', '')}")
     st.sidebar.write(f"🔑 {nivel}")
 
