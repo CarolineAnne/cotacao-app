@@ -402,7 +402,7 @@ if st.session_state.logado:
                 background-size: cover;
             }
     
-            /* ===== SIDEBAR (SÓLIDA E ADAPTÁVEL AO TEMA) ===== */
+            /* ===== SIDEBAR (SÓLIDA E ADAPTÁVEL AO TEMA) ===== 
             [data-testid="stSidebar"] {
                 background-color: var(--secondary-background-color) !important;
             }
@@ -417,7 +417,7 @@ if st.session_state.logado:
                 background-color: var(--background-color);
                 border-radius: 10px;
                 padding: 20px;
-            }
+            }*/
             </style>
             """,
             unsafe_allow_html=True
