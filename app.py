@@ -4,13 +4,11 @@ import pandas as pd
 from datetime import datetime
 import io
 import os
-import psycopg2
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet
 from supabase import create_client
-import base64
 # ====================================================
 
 # ================== CONEXÃO =========================
@@ -37,9 +35,6 @@ def carregar_produtos():
         st.error(f"Erro ao carregar produtos: {e}")
 
     return df
-
-@st.cache_data(ttl=60)
-def carregar_cotacoes():
 
     df = pd.DataFrame()  # 🔥 garante que sempre existe
 
@@ -321,21 +316,17 @@ st.set_page_config(
     layout="wide"
 )
 
-# 🔥 Estilos gerais que valem para todas as telas
 st.markdown(
     """
     <style>
-    /* barra superior transparente */
     [data-testid="stHeader"] {
         background: transparent;
     }
 
-    /* sidebar transparente */
     [data-testid="stSidebar"] {
-        background-color: rgba(0, 0, 0, 0.6);
+        background-color: rgba(0, 0, 0, 0.12);
     }
 
-    /* conteúdo */
     .block-container {
         padding: 20px;
         border-radius: 10px;
@@ -411,31 +402,52 @@ if st.session_state.logado:
 
     opcao = st.sidebar.selectbox("Opções", menu)
 
-    # 🔥 CONTROLE DE FUNDO (AQUI É O LUGAR CERTO)
-    if opcao == "Início":
-        st.markdown(
-            """
-            <style>
-            .stApp {
-                background: url("SEU_GIF") no-repeat center center fixed;
-                background-size: cover;
-            }
-            </style>
-            """,
-            unsafe_allow_html=True
-        )
-    else:
-        st.markdown(
-            """
-            <style>
-            .stApp {
-                background: #0E1117;
-            }
-            </style>
-            """,
-            unsafe_allow_html=True
-        )
-
+       # 🔥 CONTROLE DE FUNDO
+        if opcao == "Início":
+            st.markdown(
+                """
+                <style>
+                .stApp {
+                    background: url("https://media2.giphy.com/media/v1.Y2lkPTc5MGI3NjExeGZhcHBta2hsdTh2bmY0Y3h3dWUwMW40eXNiMGozOW1rYjRmNGtvZiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3bsn2kadghWrYMXneO/giphy.gif") no-repeat center center fixed;
+                    background-size: cover;
+                }
+    
+                .stApp::before {
+                    content: "";
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: rgba(0,0,0,0.35);
+                    pointer-events: none;
+                    z-index: 0;
+                }
+    
+                .block-container {
+                    position: relative;
+                    z-index: 1;
+                }
+                </style>
+                """,
+                unsafe_allow_html=True
+            )
+        else:
+            st.markdown(
+                """
+                <style>
+                .stApp {
+                    background: var(--background-color);
+                }
+    
+                .stApp::before {
+                    background: transparent !important;
+                }
+                </style>
+                """,
+                unsafe_allow_html=True
+            )
+            
     st.sidebar.write(f"👤 {st.session_state.get('nome', '')}")
     st.sidebar.write(f"🔑 {nivel}")
 
@@ -452,28 +464,6 @@ if st.session_state.logado:
         st.title("📊 Sistema de Cotação")
         st.caption("Utilize o menu lateral para navegar pelas funcionalidades.")
 
-        # 🔥 FUNDO SOMENTE NA TELA INICIAL
-        st.markdown(
-            """
-            <style>
-            .stApp {
-                background: url("https://media2.giphy.com/media/v1.Y2lkPTc5MGI3NjExeGZhcHBta2hsdTh2bmY0Y3h3dWUwMW40eXNiMGozOW1rYjRmNGtvZiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3bsn2kadghWrYMXneO/giphy.gif") no-repeat center center fixed;
-                background-size: cover;
-            }
-    
-            .stApp::before {
-                content: "";
-                position: fixed;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
-                background: rgba(0,0,0,0.4);
-            }
-            </style>
-            """,
-            unsafe_allow_html=True
-        )
     # =====================
 
     # ================== CADASTRO DE USUÁRIOS
@@ -623,7 +613,7 @@ if st.session_state.logado:
             try:
                 supabase.table("produtos").insert({
                     "nome": nome.strip().upper(),
-                    "classe": corrigir_classe(c[1]),
+                    "classe": corrigir_classe(classe),
                     "unidade": unidade,
                     "kg": kg
                 }).execute()
@@ -944,7 +934,7 @@ if st.session_state.logado:
     
                             dados_insert.append({
                                 "data": data.strftime("%Y-%m-%d"),
-                                "classe": corrigir_classe(classe),
+                                "classe": corrigir_classe(c[1]),
                                 "produto": str(c[0]).strip().upper(),
                                 "unidade": c[2],
                                 "kg": c[3],
