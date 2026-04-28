@@ -20,7 +20,7 @@ supabase = create_client(url,key)
 @st.cache_data(ttl=60)
 def carregar_produtos():
 
-    df = pd.DataFrame()  # garante existência
+    df = pd.DataFrame()
 
     try:
         resp = supabase.table("produtos").select("*").execute()
@@ -33,23 +33,6 @@ def carregar_produtos():
 
     except Exception as e:
         st.error(f"Erro ao carregar produtos: {e}")
-
-    return df
-
-    df = pd.DataFrame()  # 🔥 garante que sempre existe
-
-    try:
-        resp = supabase.table("cotacoes")\
-            .select("produto, preco_min, preco_max, valor_kg, data")\
-            .execute()
-
-        if resp and resp.data:
-            df = pd.DataFrame(resp.data)
-
-            df["produto"] = df["produto"].astype(str).str.strip().str.upper()
-
-    except Exception as e:
-        st.error(f"Erro ao carregar cotações: {e}")
 
     return df
 
@@ -402,51 +385,51 @@ if st.session_state.logado:
 
     opcao = st.sidebar.selectbox("Opções", menu)
 
-       # 🔥 CONTROLE DE FUNDO
-        if opcao == "Início":
-            st.markdown(
-                """
-                <style>
-                .stApp {
-                    background: url("https://media2.giphy.com/media/v1.Y2lkPTc5MGI3NjExeGZhcHBta2hsdTh2bmY0Y3h3dWUwMW40eXNiMGozOW1rYjRmNGtvZiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3bsn2kadghWrYMXneO/giphy.gif") no-repeat center center fixed;
-                    background-size: cover;
-                }
-    
-                .stApp::before {
-                    content: "";
-                    position: fixed;
-                    top: 0;
-                    left: 0;
-                    width: 100%;
-                    height: 100%;
-                    background: rgba(0,0,0,0.35);
-                    pointer-events: none;
-                    z-index: 0;
-                }
-    
-                .block-container {
-                    position: relative;
-                    z-index: 1;
-                }
-                </style>
-                """,
-                unsafe_allow_html=True
-            )
-        else:
-            st.markdown(
-                """
-                <style>
-                .stApp {
-                    background: var(--background-color);
-                }
-    
-                .stApp::before {
-                    background: transparent !important;
-                }
-                </style>
-                """,
-                unsafe_allow_html=True
-            )
+    # 🔥 CONTROLE DE FUNDO
+    if opcao == "Início":
+        st.markdown(
+            """
+            <style>
+            .stApp {
+                background: url("https://media2.giphy.com/media/v1.Y2lkPTc5MGI3NjExeGZhcHBta2hsdTh2bmY0Y3h3dWUwMW40eXNiMGozOW1rYjRmNGtvZiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3bsn2kadghWrYMXneO/giphy.gif") no-repeat center center fixed;
+                background-size: cover;
+            }
+
+            .stApp::before {
+                content: "";
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0,0,0,0.35);
+                pointer-events: none;
+                z-index: 0;
+            }
+
+            .block-container {
+                position: relative;
+                z-index: 1;
+            }
+            </style>
+            """,
+            unsafe_allow_html=True
+        )
+    else:
+        st.markdown(
+            """
+            <style>
+            .stApp {
+                background: var(--background-color);
+            }
+
+            .stApp::before {
+                background: transparent !important;
+            }
+            </style>
+            """,
+            unsafe_allow_html=True
+        )
             
     st.sidebar.write(f"👤 {st.session_state.get('nome', '')}")
     st.sidebar.write(f"🔑 {nivel}")
