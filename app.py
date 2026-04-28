@@ -302,14 +302,17 @@ st.set_page_config(
 st.markdown(
     """
     <style>
+    /* barra superior transparente */
     [data-testid="stHeader"] {
         background: transparent;
     }
 
+    /* NÃO força cor na sidebar: deixa seguir o tema claro/escuro */
     [data-testid="stSidebar"] {
-        background-color: rgba(0, 0, 0, 0.35);
+        background-color: var(--secondary-background-color);
     }
 
+    /* conteúdo geral */
     .block-container {
         padding: 20px;
         border-radius: 10px;
@@ -385,55 +388,67 @@ if st.session_state.logado:
 
     opcao = st.sidebar.selectbox("Opções", menu)
 
-    # 🔥 CONTROLE DE FUNDO
-    if opcao == "Início":
-        st.markdown(
-            """
-            <style>
-            /* 🔥 APENAS O FUNDO */
-            .stApp {
-                background: url("https://media2.giphy.com/media/v1.Y2lkPTc5MGI3NjExeGZhcHBta2hsdTh2bmY0Y3h3dWUwMW40eXNiMGozOW1rYjRmNGtvZiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3bsn2kadghWrYMXneO/giphy.gif") no-repeat center center fixed;
-                background-size: cover;
-            }
+        # 🔥 CONTROLE DE FUNDO
+        if opcao == "Início":
+            st.markdown(
+                """
+                <style>
+                /* Somente o fundo da tela inicial recebe o GIF */
+                .stApp {
+                    background-image: url("https://media2.giphy.com/media/v1.Y2lkPTc5MGI3NjExeGZhcHBta2hsdTh2bmY0Y3h3dWUwMW40eXNiMGozOW1rYjRmNGtvZiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3bsn2kadghWrYMXneO/giphy.gif");
+                    background-repeat: no-repeat;
+                    background-position: center center;
+                    background-attachment: fixed;
+                    background-size: cover;
+                }
     
-            /* 🔥 CAMADA SUAVE (SEM ALTERAR TEXTO) */
-            .stApp::before {
-                content: "";
-                position: fixed;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
-                background: rgba(0,0,0,0.25);
-                pointer-events: none;
-                z-index: 0;
-            }
+                /* Sidebar segue o tema normal do Streamlit */
+                [data-testid="stSidebar"] {
+                    background-color: var(--secondary-background-color) !important;
+                }
     
-            /* 🔥 GARANTE QUE O CONTEÚDO FIQUE NA FRENTE */
-            .block-container {
-                position: relative;
-                z-index: 1;
-            }
-            </style>
-            """,
-            unsafe_allow_html=True
-        )
+                /* Textos seguem o tema normal */
+                [data-testid="stSidebar"] * {
+                    color: var(--text-color) !important;
+                }
     
-    else:
-        st.markdown(
-            """
-            <style>
-            .stApp {
-                background: var(--background-color);
-            }
+                h1, h2, h3, p, label, span {
+                    color: var(--text-color);
+                }
     
-            .stApp::before {
-                background: transparent !important;
-            }
-            </style>
-            """,
-            unsafe_allow_html=True
-        )
+                .block-container {
+                    position: relative;
+                    z-index: 1;
+                }
+                </style>
+                """,
+                unsafe_allow_html=True
+            )
+    
+        else:
+            st.markdown(
+                """
+                <style>
+                /* Demais telas seguem o tema claro/escuro do sistema */
+                .stApp {
+                    background: var(--background-color);
+                }
+    
+                [data-testid="stSidebar"] {
+                    background-color: var(--secondary-background-color) !important;
+                }
+    
+                [data-testid="stSidebar"] * {
+                    color: var(--text-color) !important;
+                }
+    
+                h1, h2, h3, p, label, span {
+                    color: var(--text-color);
+                }
+                </style>
+                """,
+                unsafe_allow_html=True
+            )
             
     st.sidebar.write(f"👤 {st.session_state.get('nome', '')}")
     st.sidebar.write(f"🔑 {nivel}")
