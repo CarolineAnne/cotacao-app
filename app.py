@@ -393,57 +393,30 @@ if st.session_state.logado:
         st.markdown(
             """
             <style>
-            /* Somente o fundo da tela inicial recebe o GIF */
+            /* ===== FUNDO (SOMENTE INÍCIO) ===== */
             .stApp {
                 background-image: url("https://media2.giphy.com/media/v1.Y2lkPTc5MGI3NjExeGZhcHBta2hsdTh2bmY0Y3h3dWUwMW40eXNiMGozOW1rYjRmNGtvZiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3bsn2kadghWrYMXneO/giphy.gif");
                 background-repeat: no-repeat;
-                background-position: center center;
+                background-position: center;
                 background-attachment: fixed;
                 background-size: cover;
             }
-
-            /* Sidebar segue o tema normal do Streamlit */
+    
+            /* ===== SIDEBAR (SÓLIDA E ADAPTÁVEL AO TEMA) ===== */
             [data-testid="stSidebar"] {
                 background-color: var(--secondary-background-color) !important;
             }
-
-            /* Textos seguem o tema normal */
-            [data-testid="stSidebar"] * {
-                color: var(--text-color) !important;
+    
+            /* ===== HEADER (BARRA SUPERIOR SÓLIDA) ===== */
+            [data-testid="stHeader"] {
+                background-color: var(--background-color) !important;
             }
-
-            h1, h2, h3, p, label, span {
-                color: var(--text-color);
-            }
-
+    
+            /* ===== CONTEÚDO PRINCIPAL ===== */
             .block-container {
-                position: relative;
-                z-index: 1;
-            }
-            </style>
-            """,
-            unsafe_allow_html=True
-        )
-
-    else:
-        st.markdown(
-            """
-            <style>
-            /* Demais telas seguem o tema claro/escuro do sistema */
-            .stApp {
-                background: var(--background-color);
-            }
-
-            [data-testid="stSidebar"] {
-                background-color: var(--secondary-background-color) !important;
-            }
-
-            [data-testid="stSidebar"] * {
-                color: var(--text-color) !important;
-            }
-
-            h1, h2, h3, p, label, span {
-                color: var(--text-color);
+                background-color: var(--background-color);
+                border-radius: 10px;
+                padding: 20px;
             }
             </style>
             """,
