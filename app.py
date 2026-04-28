@@ -10,8 +10,11 @@ from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet
 from supabase import create_client
+import base64
 # ====================================================
-
+def get_base64(file_path):
+    with open(file_path, "rb") as f:
+        return base64.b64encode(f.read()).decode()
 # ================== CONEXÃO =========================
 url = "https://yovuvhuubopujagvukki.supabase.co"
 key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlvdnV2aHV1Ym9wdWphZ3Z1a2tpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY4MjA1MTIsImV4cCI6MjA5MjM5NjUxMn0.ywT2j8efoK9hnGcckTVrPBa4P7Qi4WkJxkap5bSjLUM"
@@ -318,13 +321,15 @@ def gerar_pdf(df, nome_pdf):
 st.set_page_config(page_title="Sistema de Cotação", layout="wide")
 
 # 🔥 FUNDO GIF
+gif_base64 = get_base64("capa.gif")
+
 st.markdown(
-    """
+    f"""
     <style>
-    .stApp {
-        background: url("capa.gif") no-repeat center center fixed;
+    .stApp {{
+        background: url("data:image/gif;base64,{gif_base64}") no-repeat center center fixed;
         background-size: cover;
-    }
+    }}
     </style>
     """,
     unsafe_allow_html=True
