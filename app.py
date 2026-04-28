@@ -390,12 +390,14 @@ if st.session_state.logado:
         st.markdown(
             """
             <style>
-            h1, h2, h3 {
-                color: white !important;
-            }
-    
+            /* MENU */
             [data-testid="stSidebar"] * {
-                color: white !important;
+                color: var(--text-color) !important;
+            }
+        
+            /* TÍTULOS */
+            h1, h2, h3 {
+                color: var(--text-color) !important;
             }
             </style>
             """,
