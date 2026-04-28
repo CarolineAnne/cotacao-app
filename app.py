@@ -298,29 +298,6 @@ st.set_page_config(
     page_title="Sistema de Cotação",
     layout="wide"
 )
-
-st.markdown(
-    """
-    <style>
-    /* barra superior transparente */
-    [data-testid="stHeader"] {
-        background: transparent;
-    }
-
-    /* NÃO força cor na sidebar: deixa seguir o tema claro/escuro */
-    [data-testid="stSidebar"] {
-        background-color: var(--secondary-background-color);
-    }
-
-    /* conteúdo geral */
-    .block-container {
-        padding: 20px;
-        border-radius: 10px;
-    }
-    </style>
-    """,
-    unsafe_allow_html=True
-)
 # ====================================================
 
 # ================== ESTADO INICIAL ==========================
@@ -388,36 +365,18 @@ if st.session_state.logado:
 
     opcao = st.sidebar.selectbox("Opções", menu)
 
-    # 🔥 CONTROLE DE FUNDO
+    # 🔥 FUNDO SOMENTE NA TELA INICIAL
     if opcao == "Início":
         st.markdown(
             """
             <style>
-            /* ===== FUNDO (SOMENTE INÍCIO) ===== */
             .stApp {
                 background-image: url("https://media2.giphy.com/media/v1.Y2lkPTc5MGI3NjExeGZhcHBta2hsdTh2bmY0Y3h3dWUwMW40eXNiMGozOW1rYjRmNGtvZiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3bsn2kadghWrYMXneO/giphy.gif");
                 background-repeat: no-repeat;
                 background-position: center;
-                background-attachment: fixed;
                 background-size: cover;
+                background-attachment: fixed;
             }
-    
-            /* ===== SIDEBAR (SÓLIDA E ADAPTÁVEL AO TEMA) ===== 
-            [data-testid="stSidebar"] {
-                background-color: var(--secondary-background-color) !important;
-            }
-    
-            /* ===== HEADER (BARRA SUPERIOR SÓLIDA) ===== */
-            [data-testid="stHeader"] {
-                background-color: var(--background-color) !important;
-            }
-    
-            /* ===== CONTEÚDO PRINCIPAL ===== */
-            .block-container {
-                background-color: var(--background-color);
-                border-radius: 10px;
-                padding: 20px;
-            }*/
             </style>
             """,
             unsafe_allow_html=True
