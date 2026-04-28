@@ -335,19 +335,19 @@ st.markdown(
     """
     <style>
     [data-testid="stSidebar"] {
-        background-color: rgba(0, 0, 0, 0.6);
+        background-color: rgba(0, 0, 0, 0.3);
     }
     </style>
     """,
     unsafe_allow_html=True
 )
 
-# 🔥 FUNDO DO CONTEÚDO (esse que você perguntou)
+# 🔥 FUNDO DO CONTEÚDO
 st.markdown(
     """
     <style>
     .block-container {
-        background-color: rgba(0, 0, 0, 0.3);
+        background-color: rgba(0, 0, 0, 0.1);
         padding: 20px;
         border-radius: 10px;
     }
