@@ -439,15 +439,15 @@ if st.session_state.logado:
         st.caption("Utilize o menu lateral para navegar pelas funcionalidades.")
 
         # espaço visual
-        st.divider()
+        #st.divider()
 
         # imagem com verificação mais segura
-        img_path = "home.png"
+        #img_path = "home.png"
 
-        if os.path.exists(img_path):
-            st.image(img_path, use_container_width=True)
-        else:
-            st.warning("Imagem 'home.png' não encontrada no diretório do projeto.")
+        #if os.path.exists(img_path):
+        #    st.image(img_path, use_container_width=True)
+        #else:
+        #    st.warning("Imagem 'home.png' não encontrada no diretório do projeto.")
     # =====================
 
     # ================== CADASTRO DE USUÁRIOS
