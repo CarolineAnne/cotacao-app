@@ -340,7 +340,7 @@ st.markdown(
     """
     <style>
     [data-testid="stSidebar"] {
-        background-color: rgba(0, 0, 0, 0.3);
+        background-color: rgba(0, 0, 0, 0.6);
     }
     </style>
     """,
@@ -352,7 +352,7 @@ st.markdown(
     """
     <style>
     .block-container {
-        background-color: rgba(0, 0, 0, 0.1);
+        background-color: rgba(0, 0, 0, 0.3);
         padding: 20px;
         border-radius: 10px;
     }
