@@ -316,6 +316,45 @@ def gerar_pdf(df, nome_pdf):
 
 # ================== CONFIG ==========================
 st.set_page_config(page_title="Sistema de Cotação", layout="wide")
+
+# 🔥 FUNDO GIF
+st.markdown(
+    """
+    <style>
+    .stApp {
+        background: url("SEU_GIF_AQUI") no-repeat center center fixed;
+        background-size: cover;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
+# 🔥 SIDEBAR TRANSPARENTE
+st.markdown(
+    """
+    <style>
+    [data-testid="stSidebar"] {
+        background-color: rgba(0, 0, 0, 0.6);
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
+# 🔥 FUNDO DO CONTEÚDO (esse que você perguntou)
+st.markdown(
+    """
+    <style>
+    .block-container {
+        background-color: rgba(0, 0, 0, 0.3);
+        padding: 20px;
+        border-radius: 10px;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
 # ====================================================
 
 # ================== ESTADO INICIAL ==========================
