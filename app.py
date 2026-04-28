@@ -1145,6 +1145,17 @@ if st.session_state.logado:
     
         # ================= ADMIN: ANEXAR PDF E CONCLUIR =================
         if nivel == "admin":
+
+            # 🔎 TESTE TEMPORÁRIO DO BUCKET
+            st.write("Projeto Supabase usado:", url)
+            st.write("Bucket esperado:", "arquivos")
+        
+            try:
+                buckets = supabase.storage.list_buckets()
+                st.write("Buckets encontrados:", buckets)
+            except Exception as e:
+                st.error(f"Erro ao listar buckets: {e}")
+
     
             st.divider()
             st.subheader("👑 Ações do Administrador")
