@@ -342,6 +342,28 @@ st.markdown(
     """,
     unsafe_allow_html=True
 )
+
+st.markdown(
+    """
+    <style>
+    /* 🔥 REMOVE FUNDO DO HEADER (barra preta de cima) */
+    header {
+        background-color: rgba(0, 0, 0, 0) !important;
+    }
+
+    /* 🔥 REMOVE SOMBRA (opcional, mas melhora o visual) */
+    header::before {
+        background: none !important;
+    }
+
+    /* 🔥 DEIXA TOTALMENTE TRANSPARENTE */
+    [data-testid="stHeader"] {
+        background: transparent;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
 # ====================================================
 
 # ================== ESTADO INICIAL ==========================
