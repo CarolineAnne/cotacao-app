@@ -324,12 +324,12 @@ st.set_page_config(page_title="Sistema de Cotação", layout="wide")
 gif_base64 = get_base64("capa.gif")
 
 st.markdown(
-    f"""
+    """
     <style>
-    .stApp {{
-        background: url("data:image/gif;base64,{gif_base64}") no-repeat center center fixed;
+    .stApp {
+        background: url("https://media2.giphy.com/media/v1.Y2lkPTc5MGI3NjExeGZhcHBta2hsdTh2bmY0Y3h3dWUwMW40eXNiMGozOW1rYjRmNGtvZiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3bsn2kadghWrYMXneO/giphy.gif") no-repeat center center fixed;
         background-size: cover;
-    }}
+    }
     </style>
     """,
     unsafe_allow_html=True
