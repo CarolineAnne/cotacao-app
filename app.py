@@ -405,7 +405,7 @@ if st.session_state.logado:
     if opcao == "Início":
 
         st.title("📊 Sistema de Cotação")
-        st.caption("**Utilize o menu lateral para navegar pelas funcionalidades.**")
+        st.text("**Utilize o menu lateral para navegar pelas funcionalidades.**")
 
     # =====================
 
