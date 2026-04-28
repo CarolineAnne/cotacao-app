@@ -320,18 +320,21 @@ def gerar_pdf(df, nome_pdf):
 # ================== CONFIG ==========================
 st.set_page_config(page_title="Sistema de Cotação", layout="wide")
 
-# 🔥 ESTILO GERAL (FUNDO + SIDEBAR + CONTEÚDO)
 st.markdown(
     """
     <style>
-    /* FUNDO COM GIF (MENOS ESTICADO) */
+    /* FUNDO COM GIF (TELA TODA) */
     .stApp {
         background: url("https://media2.giphy.com/media/v1.Y2lkPTc5MGI3NjExeGZhcHBta2hsdTh2bmY0Y3h3dWUwMW40eXNiMGozOW1rYjRmNGtvZiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3bsn2kadghWrYMXneO/giphy.gif") no-repeat center center fixed;
-        background-size: 85%;  /* 🔥 controla o esticamento */
-        background-color: black;
+        background-size: cover;
     }
 
-    /* CAMADA ESCURA PARA MELHORAR LEITURA */
+    /* 🔥 AJUSTE DE POSIÇÃO (DIMINUI DISTORÇÃO VISUAL) */
+    .stApp {
+        background-position: center center;
+    }
+
+    /* CAMADA ESCURA (ESSENCIAL PRA QUALIDADE VISUAL) */
     .stApp::before {
         content: "";
         position: fixed;
@@ -339,21 +342,21 @@ st.markdown(
         left: 0;
         width: 100%;
         height: 100%;
-        background: rgba(0, 0, 0, 0.4);
+        background: rgba(0, 0, 0, 0.45);
         z-index: 0;
     }
 
-    /* SIDEBAR TRANSPARENTE */
+    /* SIDEBAR */
     [data-testid="stSidebar"] {
         background-color: rgba(0, 0, 0, 0.6);
     }
 
-    /* CONTEÚDO (VIDRO FOSCO) */
+    /* CONTEÚDO */
     .block-container {
         position: relative;
         z-index: 1;
         background: rgba(0, 0, 0, 0.25);
-        backdrop-filter: blur(8px);
+        backdrop-filter: blur(6px);
         padding: 20px;
         border-radius: 10px;
     }
