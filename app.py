@@ -12,9 +12,7 @@ from reportlab.lib.styles import getSampleStyleSheet
 from supabase import create_client
 import base64
 # ====================================================
-def get_base64(file_path):
-    with open(file_path, "rb") as f:
-        return base64.b64encode(f.read()).decode()
+
 # ================== CONEXÃO =========================
 url = "https://yovuvhuubopujagvukki.supabase.co"
 key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlvdnV2aHV1Ym9wdWphZ3Z1a2tpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY4MjA1MTIsImV4cCI6MjA5MjM5NjUxMn0.ywT2j8efoK9hnGcckTVrPBa4P7Qi4WkJxkap5bSjLUM"
@@ -320,11 +318,16 @@ def gerar_pdf(df, nome_pdf):
 # ================== CONFIG ==========================
 st.set_page_config(page_title="Sistema de Cotação", layout="wide")
 
+def get_video_base64(path):
+    with open(path, "rb") as f:
+        return base64.b64encode(f.read()).decode()
+
+video_base64 = get_video_base64("capa.mp4")
+
 st.markdown(
-    """
+    f"""
     <style>
-    /* VÍDEO COMO FUNDO */
-    .video-bg {
+    .video-bg {{
         position: fixed;
         top: 0;
         left: 0;
@@ -332,10 +335,9 @@ st.markdown(
         height: 100vh;
         object-fit: cover;
         z-index: -2;
-    }
+    }}
 
-    /* CAMADA ESCURA PARA MELHORAR LEITURA */
-    .stApp::before {
+    .stApp::before {{
         content: "";
         position: fixed;
         top: 0;
@@ -344,27 +346,24 @@ st.markdown(
         height: 100%;
         background: rgba(0, 0, 0, 0.45);
         z-index: -1;
-    }
+    }}
 
-    /* SIDEBAR TRANSPARENTE */
-    [data-testid="stSidebar"] {
+    [data-testid="stSidebar"] {{
         background-color: rgba(0, 0, 0, 0.6);
-    }
+    }}
 
-    /* CONTEÚDO (EFEITO VIDRO) */
-    .block-container {
+    .block-container {{
         position: relative;
         z-index: 1;
         background: rgba(0, 0, 0, 0.25);
         backdrop-filter: blur(6px);
         padding: 20px;
         border-radius: 10px;
-    }
+    }}
     </style>
 
-    <!-- VÍDEO -->
-    <video autoplay muted loop class="video-bg">
-        <source src="capa.mp4" type="video/mp4">
+    <video autoplay muted loop playsinline class="video-bg">
+        <source src="data:video/mp4;base64,{video_base64}" type="video/mp4">
     </video>
     """,
     unsafe_allow_html=True
