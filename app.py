@@ -404,28 +404,8 @@ if st.session_state.logado:
     # ================== INÍCIO
     if opcao == "Início":
 
-        st.markdown(
-            """
-            <div style="
-                text-align: center;
-                background: rgba(0, 0, 0, 0.5);
-                padding: 30px;
-                border-radius: 12px;
-                margin-top: 20px;
-            ">
-                <h1 style="margin-bottom: 10px;">
-                    📊 Sistema de Cotação
-                </h1>
-                <p style="opacity: 0.9;">
-                    Utilize o menu lateral para navegar pelas funcionalidades.
-                </p>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-
         st.title("📊 Sistema de Cotação")
-        st.caption("Utilize o menu lateral para navegar pelas funcionalidades.")
+        st.caption("**Utilize o menu lateral para navegar pelas funcionalidades.**")
 
     # =====================
 
