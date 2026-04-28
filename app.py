@@ -320,21 +320,18 @@ def gerar_pdf(df, nome_pdf):
 # ================== CONFIG ==========================
 st.set_page_config(page_title="Sistema de Cotação", layout="wide")
 
+# 🔥 ESTILO GERAL (FUNDO + SIDEBAR + CONTEÚDO)
 st.markdown(
     """
     <style>
-    /* GIF COMO FUNDO REAL */
-    .gif-bg {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100vw;
-        height: 100vh;
-        object-fit: cover;
-        z-index: -2;
+    /* FUNDO COM GIF (MENOS ESTICADO) */
+    .stApp {
+        background: url("https://media2.giphy.com/media/v1.Y2lkPTc5MGI3NjExeGZhcHBta2hsdTh2bmY0Y3h3dWUwMW40eXNiMGozOW1rYjRmNGtvZiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3bsn2kadghWrYMXneO/giphy.gif") no-repeat center center fixed;
+        background-size: 85%;  /* 🔥 controla o esticamento */
+        background-color: black;
     }
 
-    /* CAMADA ESCURA */
+    /* CAMADA ESCURA PARA MELHORAR LEITURA */
     .stApp::before {
         content: "";
         position: fixed;
@@ -343,24 +340,24 @@ st.markdown(
         width: 100%;
         height: 100%;
         background: rgba(0, 0, 0, 0.4);
-        z-index: -1;
+        z-index: 0;
     }
 
-    /* SIDEBAR */
+    /* SIDEBAR TRANSPARENTE */
     [data-testid="stSidebar"] {
         background-color: rgba(0, 0, 0, 0.6);
     }
 
-    /* CONTEÚDO */
+    /* CONTEÚDO (VIDRO FOSCO) */
     .block-container {
+        position: relative;
+        z-index: 1;
         background: rgba(0, 0, 0, 0.25);
         backdrop-filter: blur(8px);
         padding: 20px;
         border-radius: 10px;
     }
     </style>
-
-    <img src="https://media2.giphy.com/media/v1.Y2lkPTc5MGI3NjExeGZhcHBta2hsdTh2bmY0Y3h3dWUwMW40eXNiMGozOW1rYjRmNGtvZiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3bsn2kadghWrYMXneO/giphy.gif" class="gif-bg">
     """,
     unsafe_allow_html=True
 )
