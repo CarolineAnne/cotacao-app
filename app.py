@@ -474,8 +474,6 @@ if st.session_state.logado:
             """,
             unsafe_allow_html=True
         )
-    
-        st.title("Sistema de Cotação")
     # =====================
 
     # ================== CADASTRO DE USUÁRIOS
