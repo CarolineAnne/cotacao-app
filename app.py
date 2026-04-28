@@ -392,7 +392,7 @@ if st.session_state.logado:
             <style>
             /* 🔥 MENU LATERAL (TEXTOS BRANCOS) */
             [data-testid="stSidebar"] * {
-                color: white !important;
+                color: black !important;
             }
         
             /* 🔥 TÍTULOS (INÍCIO E PÁGINAS) */
