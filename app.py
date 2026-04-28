@@ -364,6 +364,23 @@ st.markdown(
     """,
     unsafe_allow_html=True
 )
+
+st.markdown(
+    """
+    <style>
+    /* 🔥 largura da sidebar */
+    section[data-testid="stSidebar"] {
+        width: 220px !important;  /* ajuste aqui */
+    }
+
+    /* 🔥 conteúdo da sidebar acompanha */
+    section[data-testid="stSidebar"] > div {
+        width: 220px !important;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
 # ====================================================
 
 # ================== ESTADO INICIAL ==========================
