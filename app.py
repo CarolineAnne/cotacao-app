@@ -454,30 +454,30 @@ if st.session_state.logado:
 
         if opcao == "Início":
 
-    # 🔥 FUNDO SOMENTE NA TELA INICIAL
-    st.markdown(
-        """
-        <style>
-        .stApp {
-            background: url("https://media2.giphy.com/media/v1.Y2lkPTc5MGI3NjExeGZhcHBta2hsdTh2bmY0Y3h3dWUwMW40eXNiMGozOW1rYjRmNGtvZiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3bsn2kadghWrYMXneO/giphy.gif") no-repeat center center fixed;
-            background-size: cover;
-        }
-
-        .stApp::before {
-            content: "";
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.4);
-        }
-        </style>
-        """,
-        unsafe_allow_html=True
-    )
-
-    st.title("Sistema de Cotação")
+        # 🔥 FUNDO SOMENTE NA TELA INICIAL
+        st.markdown(
+            """
+            <style>
+            .stApp {
+                background: url("https://media2.giphy.com/media/v1.Y2lkPTc5MGI3NjExeGZhcHBta2hsdTh2bmY0Y3h3dWUwMW40eXNiMGozOW1rYjRmNGtvZiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3bsn2kadghWrYMXneO/giphy.gif") no-repeat center center fixed;
+                background-size: cover;
+            }
+    
+            .stApp::before {
+                content: "";
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0,0,0,0.4);
+            }
+            </style>
+            """,
+            unsafe_allow_html=True
+        )
+    
+        st.title("Sistema de Cotação")
     # =====================
 
     # ================== CADASTRO DE USUÁRIOS
