@@ -1148,8 +1148,6 @@ if st.session_state.logado:
     
             st.divider()
             st.subheader("👑 Ações do Administrador")
-        
-            st.stop()  # 🔥 para aqui só para testar
     
             arquivo_pdf = st.file_uploader(
                 "Anexar PDF",
