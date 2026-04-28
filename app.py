@@ -334,7 +334,7 @@ st.markdown(
     }
 
     .block-container {
-        background: rgba(0, 0, 0, 0.25);
+        background: rgba(0, 0, 0, 0.4);
         padding: 20px;
         border-radius: 10px;
     }
