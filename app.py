@@ -355,13 +355,13 @@ if st.session_state.logado:
     nivel = st.session_state.get("nivel", "")
 
     if nivel == "admin":
-        menu = ["Início", "Cadastro de Usuários", "Cadastro de Produtos", "Cotação do Dia", "Visualizar Dados"]
+        menu = ["Início", "Cadastro de Usuários", "Cadastro de Produtos", "Solicitações", "Cotação do Dia", "Visualizar Dados"]
 
     elif nivel == "cotacao":
-        menu = ["Início", "Cotação do Dia", "Visualizar Dados"]
+        menu = ["Início", "Cotação do Dia", "Visualizar Dados", "Solicitações"]
 
     else:
-        menu = ["Início", "Visualizar Dados"]
+        menu = ["Início", "Visualizar Dados", "Solicitações"]
 
     opcao = st.sidebar.selectbox("Opções", menu)
 
@@ -1031,3 +1031,164 @@ if st.session_state.logado:
 
             except Exception as e:
                 st.error(f"Erro ao gerar PDF: {e}")
+# ===============================================================
+
+# ===================== SOLICITAÇÕES
+    # ===================== SOLICITAÇÕES
+    elif opcao == "Solicitações":
+
+        st.title("📄 Solicitações")
+
+        # ================= ADMIN: CADASTRAR TIPOS =================
+        if nivel == "admin":
+            st.subheader("➕ Cadastrar Tipo de Solicitação")
+
+            novo_tipo = st.text_input("Novo tipo de solicitação")
+
+            if st.button("Cadastrar Tipo"):
+                if novo_tipo.strip() == "":
+                    st.warning("Digite um nome para o tipo.")
+                else:
+                    try:
+                        supabase.table("tipos_solicitacao").insert({
+                            "nome": novo_tipo.strip()
+                        }).execute()
+
+                        st.success("Tipo cadastrado com sucesso!")
+                        st.rerun()
+
+                    except Exception as e:
+                        st.error(f"Erro ao cadastrar tipo: {e}")
+
+            st.divider()
+
+        # ================= VISITANTE: FAZER SOLICITAÇÃO =================
+        if nivel == "visitante":
+            st.subheader("➕ Nova Solicitação")
+
+            try:
+                resp_tipos = supabase.table("tipos_solicitacao").select("*").execute()
+                tipos_df = pd.DataFrame(resp_tipos.data)
+
+                if tipos_df.empty:
+                    st.warning("Nenhum tipo de solicitação cadastrado.")
+                    st.stop()
+
+                tipos_lista = tipos_df["nome"].tolist()
+
+            except Exception as e:
+                st.error(f"Erro ao carregar tipos: {e}")
+                st.stop()
+
+            tipo = st.selectbox("Tipo de solicitação", tipos_lista)
+            descricao = st.text_area("Descrição da solicitação")
+
+            if st.button("Enviar Solicitação"):
+                if descricao.strip() == "":
+                    st.warning("Descreva a solicitação antes de enviar.")
+                else:
+                    try:
+                        supabase.table("solicitacoes").insert({
+                            "data": datetime.now().strftime("%Y-%m-%d"),
+                            "usuario": st.session_state.get("nome", ""),
+                            "tipo": tipo,
+                            "descricao": descricao.strip(),
+                            "status": "Pendente",
+                            "arquivo_url": ""
+                        }).execute()
+
+                        st.success("Solicitação enviada com sucesso!")
+                        st.rerun()
+
+                    except Exception as e:
+                        st.error(f"Erro ao enviar solicitação: {e}")
+
+            st.divider()
+
+        # ================= LISTAR SOLICITAÇÕES =================
+        st.subheader("📋 Solicitações Registradas")
+
+        try:
+            resp = supabase.table("solicitacoes").select("*").order("id", desc=True).execute()
+            df_sol = pd.DataFrame(resp.data)
+
+        except Exception as e:
+            st.error(f"Erro ao carregar solicitações: {e}")
+            st.stop()
+
+        if df_sol.empty:
+            st.info("Nenhuma solicitação registrada.")
+            st.stop()
+
+        st.dataframe(df_sol, use_container_width=True)
+
+        st.divider()
+
+        # ================= DETALHAR / BAIXAR / GERENCIAR =================
+        st.subheader("🔎 Detalhes da Solicitação")
+
+        ids = df_sol["id"].tolist()
+        id_selecionado = st.selectbox("Selecione a solicitação", ids)
+
+        dados = df_sol[df_sol["id"] == id_selecionado].iloc[0]
+
+        st.write(f"**Data:** {dados['data']}")
+        st.write(f"**Usuário:** {dados['usuario']}")
+        st.write(f"**Tipo:** {dados['tipo']}")
+        st.write(f"**Status:** {dados['status']}")
+        st.write(f"**Descrição:** {dados['descricao']}")
+
+        # DOWNLOAD PARA TODOS, SE TIVER PDF
+        if dados.get("arquivo_url") and str(dados["arquivo_url"]).strip() != "":
+            st.markdown(f"[📥 Baixar PDF]({dados['arquivo_url']})")
+        else:
+            st.info("Ainda não há PDF anexado para esta solicitação.")
+
+        # ================= ADMIN: ANEXAR PDF E CONCLUIR =================
+        if nivel == "admin":
+
+            st.divider()
+            st.subheader("👑 Ações do Administrador")
+
+            arquivo_pdf = st.file_uploader(
+                "Anexar PDF",
+                type=["pdf"],
+                key=f"pdf_{id_selecionado}"
+            )
+
+            if arquivo_pdf is not None:
+                if st.button("Enviar PDF e Marcar como Concluído"):
+
+                    try:
+                        nome_arquivo = f"solicitacao_{id_selecionado}.pdf"
+
+                        supabase.storage.from_("arquivos").upload(
+                            nome_arquivo,
+                            arquivo_pdf.getvalue(),
+                            {"content-type": "application/pdf", "upsert": "true"}
+                        )
+
+                        url_pdf = supabase.storage.from_("arquivos").get_public_url(nome_arquivo)
+
+                        supabase.table("solicitacoes").update({
+                            "arquivo_url": url_pdf,
+                            "status": "Concluído"
+                        }).eq("id", int(id_selecionado)).execute()
+
+                        st.success("PDF anexado e solicitação marcada como concluída!")
+                        st.rerun()
+
+                    except Exception as e:
+                        st.error(f"Erro ao anexar PDF: {e}")
+
+            if st.button("Marcar como Concluído sem PDF"):
+                try:
+                    supabase.table("solicitacoes").update({
+                        "status": "Concluído"
+                    }).eq("id", int(id_selecionado)).execute()
+
+                    st.success("Solicitação marcada como concluída!")
+                    st.rerun()
+
+                except Exception as e:
+                    st.error(f"Erro ao atualizar status: {e}")
