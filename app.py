@@ -390,26 +390,13 @@ if st.session_state.logado:
         st.markdown(
             """
             <style>
-            h1, h2, h3 {
-                color: white !important;
-            }
-    
-            [data-testid="stSidebar"] * {
-                color: white !important;
-            }
-            </style>
-            """,
-            unsafe_allow_html=True
-        )
-        
-        st.markdown(
-            """
-            <style>
+            /* 🔥 APENAS O FUNDO */
             .stApp {
                 background: url("https://media2.giphy.com/media/v1.Y2lkPTc5MGI3NjExeGZhcHBta2hsdTh2bmY0Y3h3dWUwMW40eXNiMGozOW1rYjRmNGtvZiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3bsn2kadghWrYMXneO/giphy.gif") no-repeat center center fixed;
                 background-size: cover;
             }
-
+    
+            /* 🔥 CAMADA SUAVE (SEM ALTERAR TEXTO) */
             .stApp::before {
                 content: "";
                 position: fixed;
@@ -417,11 +404,12 @@ if st.session_state.logado:
                 left: 0;
                 width: 100%;
                 height: 100%;
-                background: rgba(0,0,0,0.3);
+                background: rgba(0,0,0,0.25);
                 pointer-events: none;
                 z-index: 0;
             }
-
+    
+            /* 🔥 GARANTE QUE O CONTEÚDO FIQUE NA FRENTE */
             .block-container {
                 position: relative;
                 z-index: 1;
@@ -430,6 +418,7 @@ if st.session_state.logado:
             """,
             unsafe_allow_html=True
         )
+    
     else:
         st.markdown(
             """
@@ -437,7 +426,7 @@ if st.session_state.logado:
             .stApp {
                 background: var(--background-color);
             }
-
+    
             .stApp::before {
                 background: transparent !important;
             }
