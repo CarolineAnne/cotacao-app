@@ -1167,9 +1167,9 @@ if st.session_state.logado:
                             arquivo_pdf.getvalue(),
                             {"content-type": "application/pdf", "upsert": "true"}
                         )
-
+                        
                         url_pdf = supabase.storage.from_("arquivos").get_public_url(nome_arquivo)
-
+                        
                         supabase.table("solicitacoes").update({
                             "arquivo_url": url_pdf,
                             "status": "Concluído"
