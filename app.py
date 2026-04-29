@@ -13,7 +13,7 @@ from supabase import create_client
 
 # ================== CONEXÃO =========================
 url = "https://yovuvhuubopujagvukki.supabase.co"
-key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlvdnV2aHV1Ym9wdWphZ3Z1a2tpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY4MjA1MTIsImV4cCI6MjA5MjM5NjUxMn0.ywT2j8efoK9hnGcckTVrPBa4P7Qi4WkJxkap5bSjLUM"
+key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlvdnV2aHV1Ym9wdWphZ3Z1a2tpIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NjgyMDUxMiwiZXhwIjoyMDkyMzk2NTEyfQ.hN9PgrgDhWHtRkmDBeQOyQwUHBdYlCz3PlL4nLmQF_4"
 supabase = create_client(url,key)
 # ====================================================
 
@@ -926,7 +926,7 @@ if st.session_state.logado:
             st.warning("Sem dados disponíveis.")
             st.stop()
 
-        # ================= TRATAMENTO =================
+        # TRATAMENTO
         df["data"] = pd.to_datetime(df["data"], errors="coerce")
         df = df.dropna(subset=["data"])
 
@@ -939,29 +939,25 @@ if st.session_state.logado:
         if "kg" in df.columns:
             df["kg"] = pd.to_numeric(df["kg"], errors="coerce").fillna(0).astype(int)
 
-        # ================= FILTROS =================
-        col1, col2, col3 = st.columns(3)
+        # FILTROS
+        col1, col2 = st.columns(2)
 
         hoje = datetime.now().date()
-
+        
         with col1:
-            data_inicio = st.date_input("Data inicial", value=hoje)
-
+            data_ref = st.date_input("Data", value=hoje)
+        
         with col2:
-            data_fim = st.date_input("Data final", value=hoje)
-
-        with col3:
             classe = st.selectbox(
                 "Classe",
                 ["Todas", "Hortaliças", "Frutas", "Especiarias", "Cereais"]
             )
-
+        
         # ================= FILTRO =================
-        data_inicio = pd.to_datetime(data_inicio)
-        data_fim = pd.to_datetime(data_fim)
-
-        df = df[(df["data"] >= data_inicio) & (df["data"] <= data_fim)]
-
+        data_ref = pd.to_datetime(data_ref)
+        
+        df = df[df["data"] == data_ref]
+        
         if classe != "Todas":
             df = df[df["classe"] == classe]
 
