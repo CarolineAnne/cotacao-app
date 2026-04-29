@@ -12,9 +12,9 @@ from supabase import create_client
 # ====================================================
 
 # ================== CONEXÃO =========================
-url = "https://yovuvhuubopujagvukki.supabase.co"
-key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlvdnV2aHV1Ym9wdWphZ3Z1a2tpIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NjgyMDUxMiwiZXhwIjoyMDkyMzk2NTEyfQ.hN9PgrgDhWHtRkmDBeQOyQwUHBdYlCz3PlL4nLmQF_4"
-supabase = create_client(url,key)
+url = st.secrets["SUPABASE_URL"]
+key = st.secrets["SUPABASE_KEY"]
+supabase = create_client(url, key)
 # ====================================================
 
 @st.cache_data(ttl=60)
