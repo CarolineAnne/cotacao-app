@@ -28,21 +28,24 @@ def gerar_hash_senha(senha, iteracoes=ITERACOES_PADRAO):
 
 
 def senha_esta_com_hash(senha_salva):
-    senha_salva = str(senha_salva or "")
+    senha_salva = str(senha_salva or "").strip()
     return senha_salva.startswith(f"{HASH_PREFIX}$")
 
 
 def verificar_senha(senha_digitada, senha_salva):
     """
     Verifica senha criptografada.
-    Também aceita senha antiga em texto puro para não travar usuários antigos.
+    Também aceita senha antiga em texto puro para não bloquear usuários antigos.
     """
     senha_digitada = str(senha_digitada or "")
     senha_salva = str(senha_salva or "")
 
-    if senha_salva.startswith(f"{HASH_PREFIX}$"):
+    senha_salva_limpa = senha_salva.strip()
+
+    # Senha já protegida com hash.
+    if senha_salva_limpa.startswith(f"{HASH_PREFIX}$"):
         try:
-            _, iteracoes, salt, hash_salvo = senha_salva.split("$", 3)
+            _, iteracoes, salt, hash_salvo = senha_salva_limpa.split("$", 3)
 
             hash_teste = hashlib.pbkdf2_hmac(
                 "sha256",
@@ -56,8 +59,57 @@ def verificar_senha(senha_digitada, senha_salva):
         except Exception:
             return False
 
-    # Compatibilidade com usuários antigos que ainda estão com senha sem hash.
-    return hmac.compare_digest(senha_digitada, senha_salva)
+    # Compatibilidade com senha antiga em texto puro.
+    # Aqui aceitamos com e sem espaços, para evitar erro por espaço salvo/digitado.
+    return (
+        hmac.compare_digest(senha_digitada, senha_salva) or
+        hmac.compare_digest(senha_digitada.strip(), senha_salva_limpa)
+    )
+
+
+def buscar_usuario_login(supabase, usuario):
+    """
+    Busca usuário de forma mais tolerante.
+    Primeiro tenta igual ao banco. Se não achar, busca todos e compara ignorando maiúsculas/minúsculas.
+    """
+    usuario = str(usuario or "").strip()
+
+    if not usuario:
+        return None
+
+    # 1) Busca exata
+    resp = (
+        supabase
+        .table("usuarios")
+        .select("*")
+        .eq("usuario", usuario)
+        .limit(1)
+        .execute()
+    )
+
+    dados = resp.data or []
+
+    if dados:
+        return dados[0]
+
+    # 2) Busca tolerante para casos como Admin/admin ou espaço no banco
+    resp = (
+        supabase
+        .table("usuarios")
+        .select("*")
+        .execute()
+    )
+
+    todos = resp.data or []
+    usuario_norm = usuario.lower().strip()
+
+    for item in todos:
+        usuario_banco = str(item.get("usuario", "") or "").lower().strip()
+
+        if usuario_banco == usuario_norm:
+            return item
+
+    return None
 
 
 def verificar_login_seguro(supabase, usuario, senha):
@@ -73,22 +125,12 @@ def verificar_login_seguro(supabase, usuario, senha):
         return None
 
     try:
-        resp = (
-            supabase
-            .table("usuarios")
-            .select("*")
-            .eq("usuario", usuario)
-            .limit(1)
-            .execute()
-        )
+        usuario_db = buscar_usuario_login(supabase, usuario)
 
-        dados = resp.data or []
-
-        if not dados:
+        if not usuario_db:
             return None
 
-        usuario_db = dados[0]
-        senha_salva = str(usuario_db.get("senha", ""))
+        senha_salva = str(usuario_db.get("senha", "") or "")
 
         if not verificar_senha(senha, senha_salva):
             return None
@@ -96,18 +138,23 @@ def verificar_login_seguro(supabase, usuario, senha):
         # Migração automática: se a senha estava sem hash, salva com hash depois do login correto.
         if not senha_esta_com_hash(senha_salva):
             try:
-                senha_hash = gerar_hash_senha(senha)
+                senha_hash = gerar_hash_senha(senha.strip())
                 supabase.table("usuarios").update({
                     "senha": senha_hash
                 }).eq("id", int(usuario_db["id"])).execute()
             except Exception:
                 pass
 
+        nivel = str(usuario_db.get("nivel", "") or "").strip()
+
+        if nivel == "visitante":
+            nivel = "requisitante"
+
         return {
             "id": usuario_db.get("id"),
             "nome": usuario_db.get("nome"),
             "usuario": usuario_db.get("usuario"),
-            "nivel": usuario_db.get("nivel")
+            "nivel": nivel
         }
 
     except Exception:
