@@ -1,0 +1,7 @@
+reportlab
+streamlit
+pandas
+numpy
+matplotlib
+openpyxl
+supabase
