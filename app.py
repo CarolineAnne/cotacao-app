@@ -36,6 +36,7 @@ from tela_produtos_info import tela_produtos_info
 from post_produto_unitario import tela_post_produto_unitario
 from tela_importacoes_excel import tela_importacoes_excel
 from relatorio_diario import tela_relatorio_diario
+from relatorio_semanal import tela_relatorio_semanal
 from solicitacoes import tela_solicitacoes
 from auth_utils import verificar_login_seguro
 from usuarios import tela_cadastro_usuarios
@@ -208,17 +209,18 @@ if st.session_state.logado:
             "Cotação do Dia",
             "Visualizar Dados",
             "Relatório Diário",
+            "Relatório Semanal",
+            "Análise de Preços",
             "Posts Analíticos",
             "Post Unitário do Produto",
-            "Análise de Preços",
             "Solicitações",
             "Importações por Excel",
+            "Sobre os Produtos",
             "Informações dos Produtos",
             "Observações de Produtos",
-            "Acompanhamento",
-            "Sobre os Produtos",
             "Permissionários",
             "Respostas dos Permissionários",
+            "Acompanhamento",
             "Configuração WhatsApp",
             "Teste Links WhatsApp"
         ]
@@ -227,11 +229,11 @@ if st.session_state.logado:
         menu = [
             "Início",
             "Cotação do Dia",
-            "Respostas dos Permissionários",
             "Visualizar Dados",
-            "Sobre os Produtos",
             "Observações de Produtos",
-            "Solicitações"
+            "Sobre os Produtos",
+            "Solicitações",
+            "Respostas dos Permissionários" 
         ]
     
     elif nivel == "requisitante":
@@ -625,7 +627,7 @@ if st.session_state.logado:
                                 )
 
                 # junta preços digitados manualmente + preços dos permissionários
-                precos_validos = precos_validos + precos_permissionarios
+                #precos_validos = precos_validos + precos_permissionarios
 
                 if precos_validos:
                     pmin = min(precos_validos)
@@ -1246,6 +1248,11 @@ if st.session_state.logado:
     # ===================== RELATÓRIO DIÁRIO
     elif opcao == "Relatório Diário":
         tela_relatorio_diario(supabase)
+    # ==========================================
+
+    # ===================== RELATÓRIO SEMANAL
+    elif opcao == "Relatório Semanal":
+        tela_relatorio_semanal(supabase)
     # ==========================================
 
     # ===================== POSTS ANALÍTICOS

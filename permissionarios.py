@@ -6,6 +6,8 @@ import uuid
 from urllib.parse import quote
 import unicodedata
 
+from whatsapp_service import enviar_para_permissionario
+
 
 TZ = ZoneInfo("America/Bahia")
 
@@ -29,7 +31,15 @@ def normalizar_whatsapp(numero):
 
 
 def carregar_config(supabase):
-    resp = supabase.table("config_permissionarios").select("*").eq("id", 1).execute()
+    resp = (
+        supabase
+        .table("config_permissionarios")
+        .select("*")
+        .eq("id", 1)
+        .limit(1)
+        .execute()
+    )
+
     dados = resp.data or []
 
     if dados:
@@ -39,20 +49,37 @@ def carregar_config(supabase):
         "id": 1,
         "hora_envio": "07:00:00",
         "hora_limite": "09:00:00",
-        "mensagem": "Bom dia! Por favor, informe os preços dos produtos solicitados para a cotação de hoje.",
+        "mensagem": (
+            "Bom dia! Por favor, informe os preços dos produtos "
+            "solicitados para a cotação de hoje."
+        ),
         "base_url": "",
-        "ativo": True
+        "ativo": False,
+        "template_nome": "link_cotacao_diaria",
+        "idioma": "pt_BR"
     }
 
 
-def atualizar_config(supabase, hora_envio, hora_limite, mensagem, base_url):
+def atualizar_config(
+    supabase,
+    hora_envio,
+    hora_limite,
+    mensagem,
+    base_url,
+    ativo,
+    template_nome,
+    idioma
+):
     supabase.table("config_permissionarios").upsert({
         "id": 1,
         "hora_envio": str(hora_envio),
         "hora_limite": str(hora_limite),
         "mensagem": mensagem.strip(),
-        "base_url": base_url.strip(),
-        "ativo": True
+        "base_url": base_url.strip().rstrip("/"),
+        "ativo": bool(ativo),
+        "template_nome": template_nome.strip(),
+        "idioma": idioma.strip(),
+        "atualizado_em": agora_brasil().isoformat()
     }).execute()
 
 
@@ -580,24 +607,51 @@ def tela_permissionarios_admin(supabase, carregar_produtos, corrigir_classe, reg
 
     # ================= ABA 3 - LINKS =================
     with abas[2]:
-        st.subheader("⚙️ Configurações de envio")
+        st.subheader("⚙️ Configurações de envio automático")
 
         config = carregar_config(supabase)
 
-        hora_envio_txt = str(config.get("hora_envio") or "07:00")[:5]
-        hora_limite_txt = str(config.get("hora_limite") or "09:00")[:5]
+        hora_envio_txt = str(
+            config.get("hora_envio") or "07:00"
+        )[:5]
 
-        hora_envio = st.time_input(
-            "Horário de envio da mensagem",
-            value=datetime.strptime(hora_envio_txt, "%H:%M").time(),
-            key="cfg_hora_envio"
+        hora_limite_txt = str(
+            config.get("hora_limite") or "09:00"
+        )[:5]
+
+        ativo_automacao = st.toggle(
+            "Ativar envio automático",
+            value=bool(config.get("ativo", False)),
+            key="cfg_ativo_whatsapp"
         )
 
-        hora_limite = st.time_input(
-            "Horário limite do link",
-            value=datetime.strptime(hora_limite_txt, "%H:%M").time(),
-            key="cfg_hora_limite"
-        )
+        col_hora_envio, col_hora_limite = st.columns(2)
+
+        with col_hora_envio:
+            hora_envio = st.time_input(
+                "Horário de envio da mensagem",
+                value=datetime.strptime(
+                    hora_envio_txt,
+                    "%H:%M"
+                ).time(),
+                key="cfg_hora_envio"
+            )
+
+        with col_hora_limite:
+            hora_limite = st.time_input(
+                "Horário limite do link",
+                value=datetime.strptime(
+                    hora_limite_txt,
+                    "%H:%M"
+                ).time(),
+                key="cfg_hora_limite"
+            )
+
+        if hora_limite <= hora_envio:
+            st.warning(
+                "O horário limite deve ser posterior "
+                "ao horário de envio."
+            )
 
         mensagem = st.text_area(
             "Mensagem enviada junto com o link",
@@ -607,36 +661,174 @@ def tela_permissionarios_admin(supabase, carregar_produtos, corrigir_classe, reg
         )
 
         base_url = st.text_input(
-            "URL base do app",
+            "URL do sistema publicado",
             value=str(config.get("base_url") or ""),
-            help="Exemplo local: http://localhost:8501 | Exemplo publicado: https://seuapp.streamlit.app",
+            help=(
+                "Use o endereço completo do sistema online. "
+                "Exemplo: https://seu-sistema.onrender.com"
+            ),
             key="cfg_base_url"
         )
 
-        if st.button("Salvar configurações"):
-            try:
-                atualizar_config(supabase, hora_envio, hora_limite, mensagem, base_url)
+        col_template, col_idioma = st.columns(2)
 
-                registrar_acao(
-                    "Configuração de permissionários",
-                    "Permissionários",
-                    f"Horário envio: {hora_envio} | Limite: {hora_limite}"
+        with col_template:
+            template_nome = st.text_input(
+                "Nome do modelo aprovado na Meta",
+                value=str(
+                    config.get("template_nome")
+                    or "link_cotacao_diaria"
+                ),
+                key="cfg_template_nome"
+            )
+
+        with col_idioma:
+            idioma = st.text_input(
+                "Idioma do modelo",
+                value=str(
+                    config.get("idioma")
+                    or "pt_BR"
+                ),
+                key="cfg_template_idioma"
+            )
+
+        if st.button(
+            "Salvar configurações",
+            type="primary"
+        ):
+            if hora_limite <= hora_envio:
+                st.error(
+                    "Corrija os horários antes de salvar."
                 )
+            elif not base_url.strip():
+                st.error(
+                    "Informe a URL do sistema publicado."
+                )
+            elif not template_nome.strip():
+                st.error(
+                    "Informe o nome do modelo aprovado."
+                )
+            else:
+                try:
+                    atualizar_config(
+                        supabase=supabase,
+                        hora_envio=hora_envio,
+                        hora_limite=hora_limite,
+                        mensagem=mensagem,
+                        base_url=base_url,
+                        ativo=ativo_automacao,
+                        template_nome=template_nome,
+                        idioma=idioma
+                    )
 
-                st.success("Configurações salvas!")
-                st.rerun()
+                    registrar_acao(
+                        "Configuração de permissionários",
+                        "Permissionários",
+                        (
+                            f"Envio automático: "
+                            f"{'ativado' if ativo_automacao else 'desativado'} | "
+                            f"Horário: {hora_envio} | "
+                            f"Limite: {hora_limite}"
+                        )
+                    )
 
-            except Exception as e:
-                st.error(f"Erro ao salvar configurações: {e}")
+                    st.success(
+                        "Configurações salvas com sucesso."
+                    )
+                    st.rerun()
+
+                except Exception as e:
+                    st.error(
+                        f"Erro ao salvar configurações: {e}"
+                    )
 
         st.divider()
+        st.subheader("🧪 Testar envio pelo WhatsApp")
 
-        st.subheader("🔗 Gerar link de hoje")
+        st.caption(
+            "Salve a configuração antes do teste. "
+            "O teste envia uma mensagem real para apenas "
+            "um permissionário."
+        )
 
         df_perm = carregar_permissionarios(supabase)
 
         if df_perm.empty:
-            st.info("Nenhum permissionário cadastrado.")
+            st.info(
+                "Nenhum permissionário cadastrado."
+            )
+        else:
+            df_ativos = df_perm[
+                df_perm["ativo"] == True
+            ].copy()
+
+            if df_ativos.empty:
+                st.info(
+                    "Nenhum permissionário ativo."
+                )
+            else:
+                nome_teste = st.selectbox(
+                    "Permissionário para o teste",
+                    df_ativos["nome"].tolist(),
+                    key="perm_teste_whatsapp"
+                )
+
+                perm_teste = (
+                    df_ativos[
+                        df_ativos["nome"] == nome_teste
+                    ]
+                    .iloc[0]
+                    .to_dict()
+                )
+
+                st.write(
+                    "Número que receberá o teste:",
+                    perm_teste.get("whatsapp", "")
+                )
+
+                if st.button(
+                    "Enviar mensagem de teste",
+                    key="btn_teste_whatsapp"
+                ):
+                    with st.spinner(
+                        "Enviando mensagem de teste..."
+                    ):
+                        resultado = enviar_para_permissionario(
+                            supabase=supabase,
+                            permissionario=perm_teste,
+                            config=carregar_config(supabase),
+                            registrar=False,
+                            impedir_duplicado=False
+                        )
+
+                    if resultado.get("ok"):
+                        st.success(
+                            "Mensagem de teste enviada com sucesso."
+                        )
+                        st.write(
+                            "Link enviado:",
+                            resultado.get("link", "")
+                        )
+                    else:
+                        st.error(
+                            "Não foi possível enviar a mensagem."
+                        )
+                        st.code(
+                            str(
+                                resultado.get(
+                                    "erro",
+                                    resultado
+                                )
+                            )
+                        )
+
+        st.divider()
+        st.subheader("🔗 Gerar link manual de hoje")
+
+        if df_perm.empty:
+            st.info(
+                "Nenhum permissionário cadastrado."
+            )
         else:
             nome_sel = st.selectbox(
                 "Permissionário para gerar link",
@@ -644,27 +836,55 @@ def tela_permissionarios_admin(supabase, carregar_produtos, corrigir_classe, reg
                 key="perm_link_nome"
             )
 
-            perm = df_perm[df_perm["nome"] == nome_sel].iloc[0]
+            perm = (
+                df_perm[
+                    df_perm["nome"] == nome_sel
+                ]
+                .iloc[0]
+            )
+
             perm_id = int(perm["id"])
 
             if st.button("Gerar link"):
-                link, valido_ate = gerar_link_permissionario(supabase, perm_id)
+                link, valido_ate = gerar_link_permissionario(
+                    supabase,
+                    perm_id
+                )
 
                 if link:
                     config = carregar_config(supabase)
-                    texto = montar_mensagem_whatsapp(nome_sel, link, config)
-                    whatsapp = normalizar_whatsapp(perm["whatsapp"])
-                    wa_link = f"https://wa.me/{whatsapp}?text={quote(texto, safe='')}"
+                    texto = montar_mensagem_whatsapp(
+                        nome_sel,
+                        link,
+                        config
+                    )
 
-                    st.success("Link gerado com sucesso!")
+                    whatsapp = normalizar_whatsapp(
+                        perm["whatsapp"]
+                    )
+
+                    wa_link = (
+                        f"https://wa.me/{whatsapp}"
+                        f"?text={quote(texto, safe='')}"
+                    )
+
+                    st.success(
+                        "Link gerado com sucesso."
+                    )
                     st.code(link)
 
-                    st.markdown(f"[📲 Abrir mensagem no WhatsApp]({wa_link})")
+                    st.markdown(
+                        f"[Abrir mensagem no WhatsApp]({wa_link})"
+                    )
 
                     registrar_acao(
                         "Link de permissionário gerado",
                         "Permissionários",
-                        f"Link gerado para {nome_sel}, válido até {valido_ate.strftime('%H:%M')}"
+                        (
+                            f"Link gerado para {nome_sel}, "
+                            f"válido até "
+                            f"{valido_ate.strftime('%H:%M')}"
+                        )
                     )
 
     # ================= ABA 4 - RESPOSTAS =================
