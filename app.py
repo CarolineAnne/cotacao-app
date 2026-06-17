@@ -192,8 +192,6 @@ if not st.session_state.logado:
 # ================== SISTEMA ==========================
 if st.session_state.logado:
 
-    st.sidebar.title("📌 Menu")
-
     nivel = st.session_state.get("nivel", "")
 
     qtd_solicitacoes_pendentes = 0
@@ -201,41 +199,42 @@ if st.session_state.logado:
     if nivel == "admin":
         qtd_solicitacoes_pendentes = contar_solicitacoes_pendentes(supabase)
 
+    # ================= MENUS POR NÍVEL =================
     if nivel == "admin":
         menu = [
             "Início",
             "Cadastro de Usuários",
             "Cadastro de Produtos",
-            "Cotação do Dia",
-            "Visualizar Dados",
-            "Relatório Diário",
-            "Relatório Semanal",
-            "Análise de Preços",
-            "Posts Analíticos",
-            "Post Unitário do Produto",
             "Solicitações",
             "Importações por Excel",
             "Sobre os Produtos",
-            "Informações dos Produtos",
-            "Observações de Produtos",
             "Permissionários",
             "Respostas dos Permissionários",
+            "Cotação do Dia",
+            "Visualizar Dados",
+            "Análise de Preços",
+            "Posts Analíticos",
+            "Relatório Diário",
+            "Relatório Semanal",
+            "Post Unitário do Produto",
+            "Informações dos Produtos",
+            "Observações de Produtos",
             "Acompanhamento",
             "Configuração WhatsApp",
             "Teste Links WhatsApp"
         ]
-    
+
     elif nivel == "cotacao":
         menu = [
             "Início",
             "Cotação do Dia",
             "Visualizar Dados",
-            "Observações de Produtos",
             "Sobre os Produtos",
+            "Observações de Produtos",
             "Solicitações",
-            "Respostas dos Permissionários" 
+            "Respostas dos Permissionários"
         ]
-    
+
     elif nivel == "requisitante":
         menu = [
             "Início",
@@ -247,57 +246,136 @@ if st.session_state.logado:
     else:
         menu = ["Início"]
 
-    # Mantém a página atual após atualizações do Streamlit
+    # ================= ESTADO DA NAVEGAÇÃO =================
     if "opcao_menu" not in st.session_state:
-        st.session_state.opcao_menu = menu[0]
-    
-    if st.session_state.opcao_menu not in menu:
-        st.session_state.opcao_menu = menu[0]
-    
-    def formatar_menu(item):
-        if item == "Solicitações" and nivel == "admin" and qtd_solicitacoes_pendentes > 0:
-            return f"Solicitações 🔴 ({qtd_solicitacoes_pendentes})"
-        return item
-    
-    opcao = st.sidebar.selectbox(
-        "Opções",
-        menu,
-        key="opcao_menu",
-        format_func=formatar_menu
-    )
+        st.session_state.opcao_menu = "Início"
 
-    # 🔥 FUNDO SOMENTE NA TELA INICIAL (SUAVIZADO)
+    if st.session_state.opcao_menu not in menu:
+        st.session_state.opcao_menu = "Início"
+
+    # ================= FUNÇÕES DE NAVEGAÇÃO =================
+    def abrir_pagina_cotacao(pagina):
+        st.session_state.opcao_menu = pagina
+
+    def voltar_menu_cotacao():
+        st.session_state.opcao_menu = "Início"
+
+    def sair_sistema():
+        st.session_state.clear()
+
+    # ========================================================
+    # NÍVEL COTAÇÃO: SEM MENU LATERAL
+    # ========================================================
+    if nivel == "cotacao":
+
+        st.markdown(
+            """
+            <style>
+            /* Botão de voltar das páginas */
+            .st-key-btn_voltar_menu_cotacao {
+                position: sticky;
+                top: 12px;
+                z-index: 999;
+                width: fit-content;
+            }
+
+            .st-key-btn_voltar_menu_cotacao button {
+                width: 52px !important;
+                height: 52px !important;
+                min-height: 52px !important;
+                border-radius: 50% !important;
+                border: 2px solid #4f98b3 !important;
+                background: rgba(235, 248, 252, 0.95) !important;
+                color: #245d72 !important;
+                font-size: 27px !important;
+                font-weight: bold !important;
+                padding: 0 !important;
+                box-shadow: 0 5px 14px rgba(38, 92, 112, 0.25) !important;
+                transition: all 0.18s ease !important;
+            }
+
+            .st-key-btn_voltar_menu_cotacao button:hover {
+                background: #d4edf5 !important;
+                color: #123f50 !important;
+                border-color: #2d7894 !important;
+                transform: translateX(-3px) scale(1.05) !important;
+                box-shadow: 0 7px 18px rgba(38, 92, 112, 0.32) !important;
+            }
+            </style>
+            """,
+            unsafe_allow_html=True
+        )
+
+        opcao = st.session_state.opcao_menu
+
+        # Dentro de uma página, mostra somente a seta de retorno
+        if opcao != "Início":
+            st.button(
+                "←",
+                key="btn_voltar_menu_cotacao",
+                help="Voltar ao menu principal",
+                on_click=voltar_menu_cotacao
+            )
+
+    # ========================================================
+    # OUTROS NÍVEIS: CONTINUAM COM MENU LATERAL
+    # ========================================================
+    else:
+
+        st.sidebar.title("📌 Menu")
+
+        def formatar_menu(item):
+            if (
+                item == "Solicitações"
+                and nivel == "admin"
+                and qtd_solicitacoes_pendentes > 0
+            ):
+                return f"Solicitações 🔴 ({qtd_solicitacoes_pendentes})"
+
+            return item
+
+        opcao = st.sidebar.selectbox(
+            "Opções",
+            menu,
+            key="opcao_menu",
+            format_func=formatar_menu
+        )
+
+        st.sidebar.write(f"👤 {st.session_state.get('nome', '')}")
+        st.sidebar.write(f"🔑 {nivel}")
+
+        st.sidebar.button(
+            "🚪 Sair",
+            key="btn_sair_sidebar",
+            on_click=sair_sistema
+        )
+
+    # ================= FUNDO DA TELA INICIAL =================
     if opcao == "Início":
         st.markdown(
             """
             <style>
             .stApp {
-                background-image: url("https://media2.giphy.com/media/v1.Y2lkPTc5MGI3NjExeGZhcHBta2hsdTh2bmY0Y3h3dWUwMW40eXNiMGozOW1rYjRmNGtvZiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3bsn2kadghWrYMXneO/giphy.gif");
+                background-image: url(
+                    "https://media2.giphy.com/media/v1.Y2lkPTc5MGI3NjExeGZhcHBta2hsdTh2bmY0Y3h3dWUwMW40eXNiMGozOW1rYjRmNGtvZiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3bsn2kadghWrYMXneO/giphy.gif"
+                );
                 background-repeat: no-repeat;
                 background-position: center;
                 background-size: cover;
                 background-attachment: fixed;
             }
-    
-            /* 🔥 CAMADA CLARA (EFEITO SUAVE) */
+
             .stApp::before {
                 content: "";
                 position: fixed;
                 inset: 0;
-                background: rgba(255, 255, 255, 0.4); /* AQUI controla suavidade */
+                background: rgba(255, 255, 255, 0.45);
                 pointer-events: none;
             }
             </style>
             """,
             unsafe_allow_html=True
         )
-            
-    st.sidebar.write(f"👤 {st.session_state.get('nome', '')}")
-    st.sidebar.write(f"🔑 {nivel}")
-
-    if st.sidebar.button("🚪 Sair"):
-        st.session_state.clear()
-        st.rerun()
 # ====================================================
 
 # ================== TELAS ==========================   
@@ -305,8 +383,260 @@ if st.session_state.logado:
     # ================== INÍCIO
     if opcao == "Início":
 
-        st.title("📊 Sistema de Cotação")
-        st.markdown("Utilize o menu lateral para navegar pelas funcionalidades.")
+        # ==================================================
+        # MENU PRINCIPAL DO NÍVEL COTAÇÃO
+        # ==================================================
+        if nivel == "cotacao":
+
+            nome_usuario = st.session_state.get("nome", "Usuário")
+
+            st.markdown(
+                """
+                <style>
+                /* Largura geral da página */
+                .block-container {
+                    max-width: 1180px;
+                    padding-top: 2.5rem;
+                    padding-bottom: 3rem;
+                }
+
+                /* Caixa principal do menu */
+                .st-key-menu_cotacao_box {
+                    background: rgba(255, 255, 255, 0.42);
+                    border: 1px solid rgba(190, 215, 225, 0.65);
+                    border-radius: 24px;
+                    padding: 28px 32px 24px 32px;
+                    box-shadow: 0 12px 35px rgba(41, 79, 92, 0.14);
+                    backdrop-filter: blur(7px);
+                }
+
+                /* Título do menu */
+                .titulo-menu-cotacao {
+                    text-align: center;
+                    color: #244854;
+                    font-size: 32px;
+                    font-weight: 750;
+                    margin-bottom: 4px;
+                }
+
+                /* Saudação */
+                .saudacao-menu-cotacao {
+                    text-align: center;
+                    color: #3f6570;
+                    font-size: 18px;
+                    font-weight: 600;
+                    margin-bottom: 5px;
+                }
+
+                /* Instrução */
+                .instrucao-menu-cotacao {
+                    text-align: center;
+                    color: #718a91;
+                    font-size: 14px;
+                    margin-bottom: 20px;
+                }
+
+                /* Botões do menu */
+                .st-key-menu_cotacao_box div[data-testid="stButton"] > button {
+                    width: 100%;
+                    min-height: 68px;
+                    border-radius: 14px;
+                    border: 1px solid #c8dfe6;
+                    background: linear-gradient(
+                        135deg,
+                        #edf7fa 0%,
+                        #dceef3 100%
+                    );
+                    color: #285461;
+                    font-size: 15px;
+                    font-weight: 650;
+                    padding: 10px 12px;
+                    white-space: normal;
+                    box-shadow: 0 4px 10px rgba(50, 91, 105, 0.10);
+                    transition: all 0.18s ease;
+                }
+
+                /* Efeito ao passar o mouse */
+                .st-key-menu_cotacao_box div[data-testid="stButton"] > button:hover {
+                    background: linear-gradient(
+                        135deg,
+                        #dceff4 0%,
+                        #cce5ec 100%
+                    );
+                    color: #173f4b;
+                    border-color: #9fc8d3;
+                    transform: translateY(-2px);
+                    box-shadow: 0 7px 15px rgba(50, 91, 105, 0.16);
+                }
+
+                /* Cor ao clicar */
+                .st-key-menu_cotacao_box div[data-testid="stButton"] > button:active {
+                    transform: translateY(0);
+                }
+
+                /* Espaçamento entre os botões */
+                .st-key-menu_cotacao_box div[data-testid="stButton"] {
+                    margin-bottom: 4px;
+                }
+
+                /* Botão de sair */
+                .st-key-menu_sair_cotacao button {
+                    background: rgba(255, 255, 255, 0.35) !important;
+                    color: #2f6f86 !important;
+                    border: 2px solid #5a9db5 !important;
+                    border-radius: 12px !important;
+                    min-height: 42px !important;
+                    font-size: 14px !important;
+                    font-weight: 650 !important;
+                    box-shadow: none !important;
+                }
+
+                .st-key-menu_sair_cotacao button:hover {
+                    background: rgba(221, 241, 247, 0.75) !important;
+                    color: #174d61 !important;
+                    border: 2px solid #397f99 !important;
+                    transform: none !important;
+                    box-shadow: 0 4px 10px rgba(50, 91, 105, 0.12) !important;
+                }
+
+                /* Ajustes para telas menores */
+                @media (max-width: 768px) {
+                    .block-container {
+                        padding-left: 12px;
+                        padding-right: 12px;
+                        padding-top: 1rem;
+                    }
+
+                    .st-key-menu_cotacao_box {
+                        padding: 20px 16px;
+                        border-radius: 18px;
+                    }
+
+                    .titulo-menu-cotacao {
+                        font-size: 25px;
+                    }
+
+                    .saudacao-menu-cotacao {
+                        font-size: 16px;
+                    }
+
+                    .st-key-menu_cotacao_box div[data-testid="stButton"] > button {
+                        min-height: 60px;
+                        font-size: 14px;
+                    }
+                }
+                </style>
+                """,
+                unsafe_allow_html=True
+            )
+
+            with st.container(
+                border=True,
+                key="menu_cotacao_box"
+            ):
+
+                st.markdown(
+                    """
+                    <div class="titulo-menu-cotacao">
+                        Sistema de Cotação
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
+
+                st.markdown(
+                    f"""
+                    <div class="saudacao-menu-cotacao">
+                        Olá, {nome_usuario}
+                    </div>
+
+                    <div class="instrucao-menu-cotacao">
+                        Selecione uma das opções abaixo para continuar.
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
+
+                # Primeira linha
+                col1, col2, col3 = st.columns(3, gap="medium")
+
+                with col1:
+                    st.button(
+                        "📊 Cotação do Dia",
+                        key="menu_cotacao_dia",
+                        width="stretch",
+                        on_click=abrir_pagina_cotacao,
+                        args=("Cotação do Dia",)
+                    )
+
+                with col2:
+                    st.button(
+                        "🧑‍🌾 Respostas dos Permissionários",
+                        key="menu_respostas_permissionarios",
+                        width="stretch",
+                        on_click=abrir_pagina_cotacao,
+                        args=("Respostas dos Permissionários",)
+                    )
+
+                with col3:
+                    st.button(
+                        "📋 Visualizar Dados",
+                        key="menu_visualizar_dados",
+                        width="stretch",
+                        on_click=abrir_pagina_cotacao,
+                        args=("Visualizar Dados",)
+                    )
+
+                # Segunda linha
+                col4, col5, col6 = st.columns(3, gap="medium")
+
+                with col4:
+                    st.button(
+                        "📦 Sobre os Produtos",
+                        key="menu_sobre_produtos",
+                        width="stretch",
+                        on_click=abrir_pagina_cotacao,
+                        args=("Sobre os Produtos",)
+                    )
+
+                with col5:
+                    st.button(
+                        "📝 Observações de Produtos",
+                        key="menu_observacoes_produtos",
+                        width="stretch",
+                        on_click=abrir_pagina_cotacao,
+                        args=("Observações de Produtos",)
+                    )
+
+                with col6:
+                    st.button(
+                        "📨 Solicitações",
+                        key="menu_solicitacoes",
+                        width="stretch",
+                        on_click=abrir_pagina_cotacao,
+                        args=("Solicitações",)
+                    )
+
+                st.write("")
+
+                sair1, sair2, sair3 = st.columns([1.4, 1, 1.4])
+
+                with sair2:
+                    st.button(
+                        "Sair do sistema",
+                        key="menu_sair_cotacao",
+                        width="stretch",
+                        on_click=sair_sistema
+                    )
+
+        # ==================================================
+        # INÍCIO DOS OUTROS NÍVEIS
+        # ==================================================
+        else:
+            st.title("📊 Sistema de Cotação")
+            st.markdown(
+                "Utilize o menu lateral para navegar pelas funcionalidades."
+            )
 
     # =====================
 
