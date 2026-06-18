@@ -230,8 +230,8 @@ if st.session_state.logado:
             "Cotação do Dia",
             "Visualizar Dados",
             "Sobre os Produtos",
-            "Observações de Produtos",
             "Solicitações",
+            "Observações de Produtos",
             "Respostas dos Permissionários"
         ]
 
