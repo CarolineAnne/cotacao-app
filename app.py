@@ -571,20 +571,20 @@ if st.session_state.logado:
 
                 with col2:
                     st.button(
-                        "🧑‍🌾 Respostas dos Permissionários",
-                        key="menu_respostas_permissionarios",
-                        width="stretch",
-                        on_click=abrir_pagina_cotacao,
-                        args=("Respostas dos Permissionários",)
-                    )
-
-                with col3:
-                    st.button(
                         "📋 Visualizar Dados",
                         key="menu_visualizar_dados",
                         width="stretch",
                         on_click=abrir_pagina_cotacao,
                         args=("Visualizar Dados",)
+                    )
+
+                with col3:
+                    st.button(
+                        "🧑‍🌾 Respostas dos Permissionários",
+                        key="menu_respostas_permissionarios",
+                        width="stretch",
+                        on_click=abrir_pagina_cotacao,
+                        args=("Respostas dos Permissionários",)
                     )
 
                 # Segunda linha
