@@ -515,8 +515,8 @@ def gerar_pdf_relatorio_diario(
     elementos.append(Paragraph(f"Relatório Diário de Cotação - {data_txt}", estilo_titulo))
     elementos.append(Paragraph("AMA - Autarquia Municipal de Abastecimento", estilo_info))
     elementos.append(Paragraph("Mercado do Produtor de Juazeiro-BA", estilo_info))
-    elementos.append(Paragraph(f"Data da cotação: {data_txt}", estilo_info))
-    elementos.append(Paragraph(f"Data de emissão: {datetime.now().strftime('%d/%m/%Y %H:%M')}", estilo_info))
+    #elementos.append(Paragraph(f"Data da cotação: {data_txt}", estilo_info))
+    #elementos.append(Paragraph(f"Data de emissão: {datetime.now().strftime('%d/%m/%Y %H:%M')}", estilo_info))
     elementos.append(Spacer(1, 10))
 
     # ================= 1. RESUMO EXECUTIVO =================

@@ -171,14 +171,14 @@ def gerar_pdf(df, nome_pdf):
         from reportlab.lib.enums import TA_CENTER
 
         # Estilos centralizados
-        estilo_titulo = styles["Title"].clone('titulo_centro')
+        estilo_titulo = styles["Title"].clone('titulo_cento')
         estilo_titulo.alignment = TA_CENTER
         estilo_titulo.fontSize = 14   # título principal
         estilo_titulo.leading = 12
         estilo_titulo.spaceAfter = 4
         estilo_titulo.spaceBefore = 6
 
-        estilo_sub = styles["Italic"].clone('sub_centro')
+        estilo_sub = styles["Italic"].clone('sub_cento')
         estilo_sub.alignment = TA_CENTER
         estilo_sub.fontSize = 8   # título principal
         estilo_sub.leading = 8  # padrão é maior → diminui aqui

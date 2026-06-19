@@ -219,9 +219,7 @@ if st.session_state.logado:
             "Post Unitário do Produto",
             "Informações dos Produtos",
             "Observações de Produtos",
-            "Acompanhamento",
-            "Configuração WhatsApp",
-            "Teste Links WhatsApp"
+            "Acompanhamento"
         ]
 
     elif nivel == "cotacao":
@@ -1742,11 +1740,3 @@ if st.session_state.logado:
         except Exception as e:
             st.error(f"Erro ao gerar Excel: {e}")
 #=======================================================================================================
-
-    # ===================== CONF. WHATSAPP
-    elif opcao == "Configuração WhatsApp":
-        tela_configuracao_whatsapp(supabase)
-
-    # ===================== TESTE LINKS WHATSAPP
-    elif opcao == "Teste Links WhatsApp":
-        tela_teste_links_whatsapp(supabase)

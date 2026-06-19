@@ -5,7 +5,7 @@ from utils import corrigir_classe
 
 
 CLASSES_PRODUTO = ["Hortaliças", "Frutas", "Especiarias", "Cereais"]
-UNIDADES_PRODUTO = ["Kg", "Cx", "Sc", "Mo-4", "Mo-5", "Lt", "Centro", "Fd"]
+UNIDADES_PRODUTO = ["Kg", "Cx", "Sc", "Mo-4", "Mo-5", "Lt", "Cento", "Fd"]
 ORDEM_CLASSES = {classe: i for i, classe in enumerate(CLASSES_PRODUTO, start=1)}
 ORDEM_CLASSES["SEM CLASSE"] = 99
 
