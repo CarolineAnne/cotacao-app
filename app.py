@@ -22,12 +22,7 @@ from dados_utils import (
 from pdf_utils import (
     gerar_pdf,
     gerar_pdf_sobre_produtos
-)
-
-from whatsapp_utils import (
-    tela_configuracao_whatsapp,
-    tela_teste_links_whatsapp
-)
+)   
 
 from analise_precos import tela_analise_precos
 from observacoes_produtos import tela_observacoes_produtos
@@ -929,9 +924,6 @@ if st.session_state.logado:
 
                             except:
                                 pass
-    
-               # 🔹 PREÇOS ENVIADOS PELOS PERMISSIONÁRIOS
-                precos_permissionarios = []
 
                 if not respostas_permissionarios.empty:
                     resp_produto = respostas_permissionarios[
@@ -946,16 +938,12 @@ if st.session_state.logado:
                             preco_perm = float(r.get("preco", 0))
 
                             if preco_perm > 0:
-                                precos_permissionarios.append(preco_perm)
 
                                 numero_preco = r.get("numero_preco", "")
 
                                 st.caption(
                                     f"🧑‍🌾 {nome_perm} - Preço {numero_preco}: R$ {preco_perm:.2f}".replace(".", ",")
                                 )
-
-                # junta preços digitados manualmente + preços dos permissionários
-                #precos_validos = precos_validos + precos_permissionarios
 
                 if precos_validos:
                     pmin = min(precos_validos)
