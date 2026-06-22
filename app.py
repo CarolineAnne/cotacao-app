@@ -39,6 +39,7 @@ from produtos import tela_cadastro_produtos
 
 from permissionarios import (
     tela_permissionarios_admin,
+    tela_envio_links_permissionarios,
     tela_publica_permissionario,
     carregar_respostas_permissionarios,
     tela_respostas_permissionarios
@@ -222,9 +223,9 @@ if st.session_state.logado:
             "Início",
             "Cotação do Dia",
             "Visualizar Dados",
+            "Envio de Links",
             "Sobre os Produtos",
             "Solicitações",
-            "Observações de Produtos",
             "Respostas dos Permissionários"
         ]
 
@@ -573,11 +574,11 @@ if st.session_state.logado:
 
                 with col3:
                     st.button(
-                        "🧑‍🌾 Respostas dos Permissionários",
-                        key="menu_respostas_permissionarios",
+                        "📨 Envio de Links",
+                        key="menu_envio_links",
                         width="stretch",
                         on_click=abrir_pagina_cotacao,
-                        args=("Respostas dos Permissionários",)
+                        args=("Envio de Links",)
                     )
 
                 # Segunda linha
@@ -594,15 +595,6 @@ if st.session_state.logado:
 
                 with col5:
                     st.button(
-                        "📝 Observações de Produtos",
-                        key="menu_observacoes_produtos",
-                        width="stretch",
-                        on_click=abrir_pagina_cotacao,
-                        args=("Observações de Produtos",)
-                    )
-
-                with col6:
-                    st.button(
                         "📨 Solicitações",
                         key="menu_solicitacoes",
                         width="stretch",
@@ -610,6 +602,19 @@ if st.session_state.logado:
                         args=("Solicitações",)
                     )
 
+                with col6:
+                    st.button(
+                        "🧑‍🌾 Respostas dos Permissionários",
+                        key="menu_respostas_permissionarios",
+                        width="stretch",
+                        on_click=abrir_pagina_cotacao,
+                        args=("Respostas dos Permissionários",)
+                    )
+
+                # Terceira linha: envio de links
+                #link1, link2, link3 = st.columns([1, 1, 1], gap="medium")
+
+                
                 st.write("")
 
                 sair1, sair2, sair3 = st.columns([1.4, 1, 1.4])
@@ -686,6 +691,15 @@ if st.session_state.logado:
                 arquivo_url
             )
         )
+
+    # ===================== ENVIO DE LINKS
+    elif opcao == "Envio de Links":
+
+        if nivel not in ["admin", "cotacao"]:
+            st.error("Acesso restrito.")
+            st.stop()
+
+        tela_envio_links_permissionarios(supabase)
 
     # ===================== RESPOSTAS DOS PERMISSIONÁRIOS
     elif opcao == "Respostas dos Permissionários":

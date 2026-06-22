@@ -1,16 +1,18 @@
-
 from datetime import datetime, timedelta
+from io import BytesIO
 from xml.sax.saxutils import escape
 
 import streamlit as st
 import pandas as pd
+import matplotlib.pyplot as plt
 
 from reportlab.platypus import (
     SimpleDocTemplate,
     Table,
     TableStyle,
     Paragraph,
-    Spacer
+    Spacer,
+    Image
 )
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
@@ -118,6 +120,94 @@ def obter_periodo_semana(data_ref):
     fim_anterior = fim - timedelta(days=7)
 
     return inicio, fim, inicio_anterior, fim_anterior
+
+
+# =========================================================
+# PRODUTOS QUE MAIS VARIARAM NA SEMANA
+# =========================================================
+def calcular_top_3_variacoes_semana(df_semana):
+    base = df_semana.copy()
+
+    if base.empty:
+        return pd.DataFrame(), pd.DataFrame()
+
+    base["data"] = pd.to_datetime(base["data"], errors="coerce")
+    base["valor_kg"] = pd.to_numeric(
+        base["valor_kg"],
+        errors="coerce"
+    )
+
+    base = base.dropna(subset=["data", "produto", "valor_kg"])
+    base = base[base["valor_kg"] > 0].copy()
+
+    if base.empty:
+        return pd.DataFrame(), pd.DataFrame()
+
+    # Consolida eventuais registros repetidos do mesmo produto no mesmo dia.
+    evolucao = (
+        base
+        .groupby(
+            [base["data"].dt.date, "produto"],
+            as_index=False
+        )
+        .agg(valor_kg=("valor_kg", "mean"))
+        .rename(columns={"data": "data"})
+    )
+
+    evolucao["data"] = pd.to_datetime(
+        evolucao["data"],
+        errors="coerce"
+    )
+
+    resumo_variacao = (
+        evolucao
+        .groupby("produto", as_index=False)
+        .agg(
+            menor_valor_kg=("valor_kg", "min"),
+            maior_valor_kg=("valor_kg", "max"),
+            dias_cotados=("data", "nunique")
+        )
+    )
+
+    # Para calcular variação real durante a semana, o produto
+    # precisa ter cotação em pelo menos dois dias.
+    resumo_variacao = resumo_variacao[
+        resumo_variacao["dias_cotados"] >= 2
+    ].copy()
+
+    if resumo_variacao.empty:
+        return pd.DataFrame(), pd.DataFrame()
+
+    resumo_variacao["variacao_percentual_semana"] = (
+        (
+            resumo_variacao["maior_valor_kg"] -
+            resumo_variacao["menor_valor_kg"]
+        )
+        / resumo_variacao["menor_valor_kg"]
+        * 100
+    )
+
+    top_3 = (
+        resumo_variacao
+        .sort_values(
+            "variacao_percentual_semana",
+            ascending=False
+        )
+        .head(3)
+        .reset_index(drop=True)
+    )
+
+    produtos_top_3 = top_3["produto"].tolist()
+
+    evolucao_top_3 = evolucao[
+        evolucao["produto"].isin(produtos_top_3)
+    ].copy()
+
+    evolucao_top_3 = evolucao_top_3.sort_values(
+        ["data", "produto"]
+    )
+
+    return top_3, evolucao_top_3
 
 
 # =========================================================
@@ -325,6 +415,10 @@ def preparar_relatorio_semanal(df_todas, data_ref, classe_sel="Todas"):
         errors="coerce"
     )
 
+    top_3_variacoes, evolucao_top_3 = (
+        calcular_top_3_variacoes_semana(df_semana)
+    )
+
     return {
         "df_semana": df_semana,
         "resumo_produto": resumo_produto,
@@ -332,6 +426,8 @@ def preparar_relatorio_semanal(df_todas, data_ref, classe_sel="Todas"):
         "alertas": alertas,
         "resumo_classe": resumo_classe,
         "evolucao_diaria": evolucao_diaria,
+        "top_3_variacoes": top_3_variacoes,
+        "evolucao_top_3": evolucao_top_3,
         "inicio": inicio,
         "fim": fim,
         "inicio_anterior": inicio_anterior,
@@ -485,6 +581,54 @@ def criar_tabela_pdf(
     return tabela
 
 
+def criar_grafico_top_3_pdf(evolucao_top_3):
+    if evolucao_top_3 is None or evolucao_top_3.empty:
+        return None
+
+    figura, eixo = plt.subplots(figsize=(7.4, 3.6))
+
+    for produto, grupo in evolucao_top_3.groupby("produto"):
+        grupo = grupo.sort_values("data")
+
+        eixo.plot(
+            grupo["data"],
+            grupo["valor_kg"],
+            marker="o",
+            linewidth=2,
+            label=str(produto)
+        )
+
+    eixo.set_title(
+        "Evolução diária dos 3 produtos que mais variaram"
+    )
+    eixo.set_xlabel("Data")
+    eixo.set_ylabel("Valor/kg médio (R$)")
+    eixo.grid(True, alpha=0.25)
+    eixo.legend(
+        loc="best",
+        fontsize=8
+    )
+
+    figura.autofmt_xdate()
+    figura.tight_layout()
+
+    memoria = BytesIO()
+    figura.savefig(
+        memoria,
+        format="png",
+        dpi=180,
+        bbox_inches="tight"
+    )
+    plt.close(figura)
+    memoria.seek(0)
+
+    return Image(
+        memoria,
+        width=530,
+        height=255
+    )
+
+
 # =========================================================
 # PDF - RELATÓRIO SEMANAL
 # =========================================================
@@ -514,6 +658,8 @@ def gerar_pdf_relatorio_semanal(
     alertas = dados["alertas"]
     resumo_classe = dados["resumo_classe"]
     evolucao_diaria = dados["evolucao_diaria"]
+    top_3_variacoes = dados["top_3_variacoes"]
+    evolucao_top_3 = dados["evolucao_top_3"]
 
     inicio = dados["inicio"]
     fim = dados["fim"]
@@ -714,9 +860,49 @@ def gerar_pdf_relatorio_semanal(
     )
     elementos.append(Spacer(1, 10))
 
-    # ================= 5. RESUMO POR CLASSE =================
+    # ================= 5. PRODUTOS QUE MAIS VARIARAM =================
     elementos.append(
-        Paragraph("5. Resumo por classe", estilo_subtitulo)
+        Paragraph(
+            "5. Três produtos que mais variaram na semana",
+            estilo_subtitulo
+        )
+    )
+
+    grafico_top_3 = criar_grafico_top_3_pdf(
+        evolucao_top_3
+    )
+
+    if grafico_top_3 is None:
+        elementos.append(
+            Paragraph(
+                "Não há produtos com cotações em pelo menos dois dias "
+                "para gerar este gráfico.",
+                estilo_normal
+            )
+        )
+    else:
+        elementos.append(grafico_top_3)
+        elementos.append(Spacer(1, 6))
+
+        nomes_top_3 = ", ".join(
+            top_3_variacoes["produto"].astype(str).tolist()
+        )
+
+        elementos.append(
+            Paragraph(
+                texto_seguro(
+                    "Produtos selecionados pela maior amplitude percentual "
+                    f"do valor/kg na semana: {nomes_top_3}."
+                ),
+                estilo_info
+            )
+        )
+
+    elementos.append(Spacer(1, 10))
+
+    # ================= 6. RESUMO POR CLASSE =================
+    elementos.append(
+        Paragraph("6. Resumo por classe", estilo_subtitulo)
     )
 
     tabela_classe = [[
@@ -746,10 +932,10 @@ def gerar_pdf_relatorio_semanal(
     )
     elementos.append(Spacer(1, 10))
 
-    # ================= 6. MÉDIAS SEMANAIS =================
+    # ================= 7. MÉDIAS SEMANAIS =================
     elementos.append(
         Paragraph(
-            "6. Médias semanais por produto",
+            "7. Médias semanais por produto",
             estilo_subtitulo
         )
     )
@@ -787,9 +973,9 @@ def gerar_pdf_relatorio_semanal(
     )
     elementos.append(Spacer(1, 10))
 
-    # ================= 7. OBSERVAÇÕES =================
+    # ================= 8. OBSERVAÇÕES =================
     elementos.append(
-        Paragraph("7. Observações da semana", estilo_subtitulo)
+        Paragraph("8. Observações da semana", estilo_subtitulo)
     )
 
     if observacoes is None or observacoes.empty:
@@ -847,10 +1033,10 @@ def gerar_pdf_relatorio_semanal(
 
     elementos.append(Spacer(1, 10))
 
-    # ================= 8. CONSIDERAÇÕES =================
+    # ================= 9. CONSIDERAÇÕES =================
     elementos.append(
         Paragraph(
-            "8. Considerações automáticas",
+            "9. Considerações automáticas",
             estilo_subtitulo
         )
     )
@@ -979,6 +1165,8 @@ def tela_relatorio_semanal(supabase):
     resumo_classe = dados["resumo_classe"]
     evolucao_diaria = dados["evolucao_diaria"]
     resumo_produto = dados["resumo_produto"]
+    top_3_variacoes = dados["top_3_variacoes"]
+    evolucao_top_3 = dados["evolucao_top_3"]
 
     st.divider()
     st.subheader("📌 Prévia do resumo")
@@ -1083,6 +1271,69 @@ def tela_relatorio_semanal(supabase):
         use_container_width=True,
         hide_index=True
     )
+
+    st.markdown(
+        "#### Três produtos que mais variaram na semana"
+    )
+
+    if evolucao_top_3.empty:
+        st.info(
+            "Não há produtos com cotações em pelo menos dois dias "
+            "para gerar este gráfico."
+        )
+    else:
+        grafico_top_3_tela = (
+            evolucao_top_3
+            .pivot(
+                index="data",
+                columns="produto",
+                values="valor_kg"
+            )
+            .sort_index()
+        )
+
+        st.line_chart(grafico_top_3_tela)
+
+        tabela_top_3_tela = top_3_variacoes.copy()
+
+        tabela_top_3_tela[
+            "variacao_percentual_semana"
+        ] = tabela_top_3_tela[
+            "variacao_percentual_semana"
+        ].apply(formatar_percentual)
+
+        tabela_top_3_tela = tabela_top_3_tela.rename(
+            columns={
+                "produto": "Produto",
+                "menor_valor_kg": "Menor valor/kg",
+                "maior_valor_kg": "Maior valor/kg",
+                "dias_cotados": "Dias cotados",
+                "variacao_percentual_semana": "Variação na semana"
+            }
+        )
+
+        tabela_top_3_tela["Menor valor/kg"] = (
+            tabela_top_3_tela["Menor valor/kg"]
+            .apply(formatar_moeda)
+        )
+
+        tabela_top_3_tela["Maior valor/kg"] = (
+            tabela_top_3_tela["Maior valor/kg"]
+            .apply(formatar_moeda)
+        )
+
+        st.dataframe(
+            tabela_top_3_tela[
+                [
+                    "Produto",
+                    "Menor valor/kg",
+                    "Maior valor/kg",
+                    "Variação na semana"
+                ]
+            ],
+            use_container_width=True,
+            hide_index=True
+        )
 
     st.markdown("#### Resumo por classe")
 

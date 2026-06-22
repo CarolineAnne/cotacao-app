@@ -1,10 +1,25 @@
 import streamlit as st
 import pandas as pd
+from io import BytesIO
 from datetime import datetime
 from zoneinfo import ZoneInfo
 import uuid
 from urllib.parse import quote
+from xml.sax.saxutils import escape
 import unicodedata
+
+from openpyxl.styles import Alignment, Font, PatternFill
+from reportlab.platypus import (
+    SimpleDocTemplate,
+    Table,
+    TableStyle,
+    Paragraph,
+    Spacer
+)
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import A4, landscape
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.enums import TA_CENTER, TA_LEFT
 
 TZ = ZoneInfo("America/Bahia")
 
@@ -54,8 +69,17 @@ def carregar_config(supabase):
 
     dados = resp.data or []
 
+    mensagem_padrao = (
+        "Obrigada, {nome}! Recebemos suas informações com sucesso. "
+        "Agradecemos sua colaboração com a cotação diária."
+    )
+
     if dados:
-        return dados[0]
+        config = dados[0]
+        config["mensagem_agradecimento"] = str(
+            config.get("mensagem_agradecimento") or mensagem_padrao
+        )
+        return config
 
     return {
         "id": 1,
@@ -65,6 +89,7 @@ def carregar_config(supabase):
             "Bom dia! Por favor, informe os preços dos produtos "
             "solicitados para a cotação de hoje."
         ),
+        "mensagem_agradecimento": mensagem_padrao,
         "base_url": "",
         "ativo": False,
         "template_nome": "link_cotacao_diaria",
@@ -77,6 +102,7 @@ def atualizar_config(
     hora_envio,
     hora_limite,
     mensagem,
+    mensagem_agradecimento,
     base_url,
     ativo,
     template_nome,
@@ -87,6 +113,7 @@ def atualizar_config(
         "hora_envio": str(hora_envio),
         "hora_limite": str(hora_limite),
         "mensagem": mensagem.strip(),
+        "mensagem_agradecimento": mensagem_agradecimento.strip(),
         "base_url": base_url.strip().rstrip("/"),
         "ativo": bool(ativo),
         "template_nome": template_nome.strip(),
@@ -201,16 +228,17 @@ def gerar_ou_atualizar_link(supabase, permissionario_id, config):
         registro = resposta.data[0]
         token = registro["token"]
 
-        (
-            supabase
-            .table("links_permissionarios")
-            .update({
-                "valido_ate": valido_ate.isoformat(),
-                "usado": False
-            })
-            .eq("id", registro["id"])
-            .execute()
-        )
+        # Um link já utilizado não pode ser reativado.
+        if not bool(registro.get("usado", False)):
+            (
+                supabase
+                .table("links_permissionarios")
+                .update({
+                    "valido_ate": valido_ate.isoformat()
+                })
+                .eq("id", registro["id"])
+                .execute()
+            )
     else:
         token = uuid.uuid4().hex
 
@@ -447,72 +475,173 @@ def carregar_fotos_permissionarios(supabase, data_str):
         return pd.DataFrame()
 
 
-def tela_publica_permissionario(supabase, token):
-    st.title("🧾 Envio de Preços")
+def converter_preco_digitado(valor):
+    texto = str(valor or "").strip()
+
+    if not texto:
+        return None
+
+    texto = (
+        texto
+        .replace("R$", "")
+        .replace(" ", "")
+    )
+
+    if "," in texto and "." in texto:
+        if texto.rfind(",") > texto.rfind("."):
+            texto = texto.replace(".", "").replace(",", ".")
+        else:
+            texto = texto.replace(",", "")
+    else:
+        texto = texto.replace(",", ".")
 
     try:
-        resp_link = supabase.table("links_permissionarios")\
-            .select("*")\
-            .eq("token", token)\
-            .limit(1)\
+        preco = float(texto)
+    except (TypeError, ValueError):
+        return None
+
+    if preco <= 0:
+        return None
+
+    return preco
+
+
+def mostrar_agradecimento(config, nome, mostrar_confetes=False):
+    mensagem_padrao = (
+        "Obrigada, {nome}! Recebemos suas informações com sucesso. "
+        "Agradecemos sua colaboração com a cotação diária."
+    )
+
+    mensagem = str(
+        config.get("mensagem_agradecimento")
+        or mensagem_padrao
+    ).strip()
+
+    mensagem = mensagem.replace("{nome}", str(nome or "").strip())
+
+    if mostrar_confetes:
+        st.balloons()
+
+    st.title("✅ Envio concluído")
+    st.success(mensagem)
+    st.info(
+        "As informações foram registradas. "
+        "Este link já foi utilizado e não permite um novo envio."
+    )
+
+
+def tela_publica_permissionario(supabase, token):
+    try:
+        resp_link = (
+            supabase
+            .table("links_permissionarios")
+            .select("*")
+            .eq("token", token)
+            .limit(1)
             .execute()
+        )
 
         dados_link = resp_link.data or []
 
         if not dados_link:
+            st.title("🧾 Envio de Preços")
             st.error("Link inválido.")
             return
 
         link = dados_link[0]
+        permissionario_id = int(link["permissionario_id"])
+        data_link = str(link["data"])
+
+        resp_perm = (
+            supabase
+            .table("permissionarios")
+            .select("*")
+            .eq("id", permissionario_id)
+            .limit(1)
+            .execute()
+        )
+
+        dados_perm = resp_perm.data or []
+
+        if not dados_perm:
+            st.title("🧾 Envio de Preços")
+            st.error("Permissionário não encontrado.")
+            return
+
+        permissionario = dados_perm[0]
+        nome_permissionario = str(
+            permissionario.get("nome") or ""
+        ).strip()
+
+        config = carregar_config(supabase)
+        chave_confetes = f"confetes_permissionario_{token}"
+
+        # Se já houve envio, o formulário não aparece novamente.
+        if bool(link.get("usado", False)):
+            mostrar_confetes = bool(
+                st.session_state.pop(chave_confetes, False)
+            )
+
+            mostrar_agradecimento(
+                config,
+                nome_permissionario,
+                mostrar_confetes=mostrar_confetes
+            )
+            return
 
         valido_ate = pd.to_datetime(link["valido_ate"])
         agora = agora_brasil()
 
         if valido_ate.tzinfo is None:
-            valido_ate = valido_ate.tz_localize("America/Bahia")
+            valido_ate = valido_ate.tz_localize(
+                "America/Bahia"
+            )
 
         if agora > valido_ate.to_pydatetime():
-            st.error("Este link expirou. Entre em contato com a administração.")
+            st.title("🧾 Envio de Preços")
+            st.error(
+                "Este link expirou. Entre em contato com a administração."
+            )
             return
-
-        permissionario_id = int(link["permissionario_id"])
-        data_link = str(link["data"])
-
-        resp_perm = supabase.table("permissionarios")\
-            .select("*")\
-            .eq("id", permissionario_id)\
-            .limit(1)\
-            .execute()
-
-        dados_perm = resp_perm.data or []
-
-        if not dados_perm:
-            st.error("Permissionário não encontrado.")
-            return
-
-        permissionario = dados_perm[0]
 
         if not permissionario.get("ativo", True):
+            st.title("🧾 Envio de Preços")
             st.error("Permissionário inativo.")
             return
 
-        st.markdown(f"### Bom dia, {permissionario['nome']}!")
-        st.info(f"Informe os preços dos produtos solicitados. Link válido até {valido_ate.strftime('%H:%M')}.")
+        st.title("🧾 Envio de Preços")
+        st.markdown(
+            f"### Bom dia, {nome_permissionario}!"
+        )
+        st.info(
+            "Informe os preços dos produtos solicitados. "
+            f"Link válido até {valido_ate.strftime('%H:%M')}."
+        )
 
-        df_produtos = carregar_vinculos(supabase, permissionario_id)
+        df_produtos = carregar_vinculos(
+            supabase,
+            permissionario_id
+        )
 
         if df_produtos.empty:
-            st.warning("Nenhum produto vinculado para este permissionário.")
+            st.warning(
+                "Nenhum produto vinculado para este permissionário."
+            )
             return
 
         with st.form("form_resposta_permissionario"):
             respostas = []
             fotos_para_salvar = []
 
-            qtd_precos = int(permissionario.get("qtd_precos", 1) or 1)
+            qtd_precos = int(
+                permissionario.get("qtd_precos", 1) or 1
+            )
 
             for _, row in df_produtos.iterrows():
-                produto = str(row["produto"]).strip().upper()
+                produto = str(
+                    row["produto"]
+                ).strip().upper()
+
                 classe = str(row.get("classe", ""))
 
                 st.markdown(f"### {produto}")
@@ -521,29 +650,38 @@ def tela_publica_permissionario(supabase, token):
 
                 for i in range(qtd_precos):
                     with cols[i % 3]:
-                        preco = st.number_input(
+                        preco_texto = st.text_input(
                             f"Preço {i + 1}",
-                            min_value=0.0,
-                            step=0.10,
-                            format="%.2f",
-                            key=f"preco_publico_{produto}_{i}"
+                            value="",
+                            placeholder="Digite o preço",
+                            key=(
+                                f"preco_publico_"
+                                f"{permissionario_id}_"
+                                f"{produto}_{i}"
+                            )
                         )
 
                         respostas.append({
                             "permissionario_id": permissionario_id,
-                            "permissionario_nome": permissionario["nome"],
+                            "permissionario_nome": nome_permissionario,
                             "data": data_link,
                             "produto": produto,
                             "classe": classe,
                             "numero_preco": i + 1,
-                            "preco": preco
+                            "preco_texto": preco_texto,
+                            "preco": converter_preco_digitado(
+                                preco_texto
+                            )
                         })
 
                 fotos = st.file_uploader(
                     f"Fotos de {produto}",
                     type=["jpg", "jpeg", "png", "webp"],
                     accept_multiple_files=True,
-                    key=f"fotos_publico_{produto}"
+                    key=(
+                        f"fotos_publico_"
+                        f"{permissionario_id}_{produto}"
+                    )
                 )
 
                 if fotos:
@@ -556,34 +694,73 @@ def tela_publica_permissionario(supabase, token):
 
                 st.divider()
 
-            enviar = st.form_submit_button("Enviar preços e fotos")
+            enviar = st.form_submit_button(
+                "Enviar preços e fotos",
+                type="primary"
+            )
 
             if enviar:
-                dados_validos = [r for r in respostas if float(r["preco"]) > 0]
+                campos_invalidos = [
+                    resposta
+                    for resposta in respostas
+                    if (
+                        str(
+                            resposta.get("preco_texto") or ""
+                        ).strip()
+                        and resposta.get("preco") is None
+                    )
+                ]
 
-                if not dados_validos and not fotos_para_salvar:
-                    st.warning("Preencha pelo menos um preço ou envie uma foto antes de concluir.")
+                if campos_invalidos:
+                    st.warning(
+                        "Há um preço inválido. Use apenas números, "
+                        "por exemplo: 12,50."
+                    )
                     return
 
-                # Apaga respostas antigas desse permissionário nesta data
-                supabase.table("respostas_permissionarios")\
-                    .delete()\
-                    .eq("permissionario_id", permissionario_id)\
-                    .eq("data", data_link)\
+                dados_validos = []
+
+                for resposta in respostas:
+                    if resposta.get("preco") is not None:
+                        dados_validos.append({
+                            chave: valor
+                            for chave, valor in resposta.items()
+                            if chave != "preco_texto"
+                        })
+
+                if not dados_validos and not fotos_para_salvar:
+                    st.warning(
+                        "Preencha pelo menos um preço ou envie uma foto "
+                        "antes de concluir."
+                    )
+                    return
+
+                (
+                    supabase
+                    .table("respostas_permissionarios")
+                    .delete()
+                    .eq("permissionario_id", permissionario_id)
+                    .eq("data", data_link)
                     .execute()
+                )
 
                 if dados_validos:
-                    supabase.table("respostas_permissionarios").insert(dados_validos).execute()
-
-                # Salva fotos, se houver
-                if fotos_para_salvar:
-
-                    # Apaga registros antigos de fotos desse permissionário nesta data
-                    supabase.table("fotos_permissionarios")\
-                        .delete()\
-                        .eq("permissionario_id", permissionario_id)\
-                        .eq("data", data_link)\
+                    (
+                        supabase
+                        .table("respostas_permissionarios")
+                        .insert(dados_validos)
                         .execute()
+                    )
+
+                if fotos_para_salvar:
+                    (
+                        supabase
+                        .table("fotos_permissionarios")
+                        .delete()
+                        .eq("permissionario_id", permissionario_id)
+                        .eq("data", data_link)
+                        .execute()
+                    )
 
                     dados_fotos = []
 
@@ -598,7 +775,7 @@ def tela_publica_permissionario(supabase, token):
 
                         dados_fotos.append({
                             "permissionario_id": permissionario_id,
-                            "permissionario_nome": permissionario["nome"],
+                            "permissionario_nome": nome_permissionario,
                             "data": data_link,
                             "produto": item["produto"],
                             "classe": item["classe"],
@@ -607,16 +784,27 @@ def tela_publica_permissionario(supabase, token):
                         })
 
                     if dados_fotos:
-                        supabase.table("fotos_permissionarios").insert(dados_fotos).execute()
+                        (
+                            supabase
+                            .table("fotos_permissionarios")
+                            .insert(dados_fotos)
+                            .execute()
+                        )
 
-                supabase.table("links_permissionarios")\
-                    .update({"usado": True})\
-                    .eq("token", token)\
+                (
+                    supabase
+                    .table("links_permissionarios")
+                    .update({"usado": True})
+                    .eq("token", token)
                     .execute()
+                )
 
-                st.success("Preços e fotos enviados com sucesso. Obrigada!")
-    except Exception as e:
-        st.error(f"Erro ao abrir link: {e}")
+                st.session_state[chave_confetes] = True
+                st.rerun()
+
+    except Exception as erro:
+        st.title("🧾 Envio de Preços")
+        st.error(f"Erro ao abrir link: {erro}")
 
 
 def aba_cadastro_permissionario(supabase, registrar_acao):
@@ -898,18 +1086,31 @@ def aba_produtos_permissionario(
         st.info("Cadastre um permissionário primeiro.")
         return
 
-    nomes = df_perm["nome"].astype(str).tolist()
-    nome_selecionado = st.selectbox(
+    df_perm = df_perm.copy()
+    df_perm["id"] = pd.to_numeric(
+        df_perm["id"],
+        errors="coerce"
+    )
+    df_perm = df_perm.dropna(subset=["id"])
+    df_perm["id"] = df_perm["id"].astype(int)
+
+    ids = df_perm["id"].tolist()
+    nomes_por_id = {
+        int(linha["id"]): str(linha.get("nome", ""))
+        for _, linha in df_perm.iterrows()
+    }
+
+    permissionario_id = st.selectbox(
         "Permissionário",
-        nomes,
-        key="perm_prod_nome"
+        ids,
+        format_func=lambda valor: nomes_por_id.get(int(valor), ""),
+        key="perm_prod_id"
     )
 
-    permissionario = (
-        df_perm[df_perm["nome"].astype(str) == nome_selecionado]
-        .iloc[0]
+    nome_selecionado = nomes_por_id.get(
+        int(permissionario_id),
+        ""
     )
-    permissionario_id = int(permissionario["id"])
 
     produtos = carregar_produtos()
 
@@ -935,16 +1136,34 @@ def aba_produtos_permissionario(
     )
 
     produtos_atuais = []
+
     if not vinculos.empty:
-        produtos_atuais = (
+        produtos_atuais = sorted(
             vinculos["produto"]
             .astype(str)
             .str.strip()
             .str.upper()
+            .dropna()
+            .unique()
             .tolist()
         )
 
-    lista_produtos = produtos["nome"].tolist()
+    if produtos_atuais:
+        st.success(
+            f"{nome_selecionado} possui "
+            f"{len(produtos_atuais)} produto(s) vinculado(s)."
+        )
+        st.caption("Produtos atuais: " + ", ".join(produtos_atuais))
+    else:
+        st.info(
+            f"{nome_selecionado} ainda não possui produtos vinculados."
+        )
+
+    lista_produtos = produtos["nome"].drop_duplicates().tolist()
+
+    chave_produtos = (
+        f"multi_prod_permissionario_{permissionario_id}"
+    )
 
     selecionados = st.multiselect(
         "Produtos",
@@ -954,13 +1173,13 @@ def aba_produtos_permissionario(
             for produto in produtos_atuais
             if produto in lista_produtos
         ],
-        key="multi_prod_permissionario"
+        key=chave_produtos
     )
 
     if st.button(
         "Salvar produtos vinculados",
         type="primary",
-        key="btn_salvar_produtos_permissionario"
+        key=f"btn_salvar_produtos_permissionario_{permissionario_id}"
     ):
         try:
             salvar_vinculos(
@@ -980,12 +1199,14 @@ def aba_produtos_permissionario(
             )
 
             st.success("Produtos vinculados com sucesso.")
+            st.session_state.pop(chave_produtos, None)
             st.rerun()
 
         except Exception as erro:
             st.error(
                 f"Erro ao salvar vínculos: {erro}"
             )
+
 
 
 def aba_mensagem_link(supabase, registrar_acao):
@@ -1002,6 +1223,19 @@ def aba_mensagem_link(supabase, registrar_acao):
         value=str(config.get("mensagem") or ""),
         height=130,
         key="cfg_mensagem_perm"
+    )
+
+    mensagem_agradecimento = st.text_area(
+        "Mensagem de agradecimento após o envio",
+        value=str(
+            config.get("mensagem_agradecimento") or ""
+        ),
+        height=130,
+        help=(
+            "Use {nome} para inserir automaticamente o nome "
+            "do permissionário."
+        ),
+        key="cfg_mensagem_agradecimento"
     )
 
     base_url = st.text_input(
@@ -1037,6 +1271,8 @@ def aba_mensagem_link(supabase, registrar_acao):
 
         if not mensagem.strip():
             st.error("Informe a mensagem do WhatsApp.")
+        elif not mensagem_agradecimento.strip():
+            st.error("Informe a mensagem de agradecimento.")
         elif not base_url_limpa:
             st.error("Informe a URL do sistema publicado.")
         elif not base_url_limpa.startswith(("http://", "https://")):
@@ -1052,6 +1288,7 @@ def aba_mensagem_link(supabase, registrar_acao):
                     ),
                     hora_limite=hora_limite,
                     mensagem=mensagem,
+                    mensagem_agradecimento=mensagem_agradecimento,
                     base_url=base_url_limpa,
                     ativo=False,
                     template_nome=str(
@@ -1353,6 +1590,387 @@ def aba_respostas_admin(supabase):
     )
 
 
+
+def montar_lista_permissionarios(supabase):
+    df_permissionarios = carregar_permissionarios(supabase)
+
+    if df_permissionarios.empty:
+        return pd.DataFrame(
+            columns=[
+                "Nome",
+                "WhatsApp",
+                "Produtos vinculados"
+            ]
+        )
+
+    df_permissionarios = df_permissionarios.copy()
+    df_permissionarios["id"] = pd.to_numeric(
+        df_permissionarios["id"],
+        errors="coerce"
+    )
+    df_permissionarios = df_permissionarios.dropna(subset=["id"])
+    df_permissionarios["id"] = df_permissionarios["id"].astype(int)
+
+    resposta = (
+        supabase
+        .table("permissionario_produtos")
+        .select("permissionario_id, produto, ativo")
+        .eq("ativo", True)
+        .execute()
+    )
+
+    df_produtos = pd.DataFrame(resposta.data or [])
+
+    if df_produtos.empty:
+        df_lista = df_permissionarios.copy()
+        df_lista["produtos_vinculados"] = ""
+    else:
+        df_produtos["permissionario_id"] = pd.to_numeric(
+            df_produtos["permissionario_id"],
+            errors="coerce"
+        )
+        df_produtos = df_produtos.dropna(
+            subset=["permissionario_id"]
+        )
+        df_produtos["permissionario_id"] = (
+            df_produtos["permissionario_id"].astype(int)
+        )
+        df_produtos["produto"] = (
+            df_produtos["produto"]
+            .astype(str)
+            .str.strip()
+            .str.upper()
+        )
+
+        produtos_agrupados = (
+            df_produtos
+            .groupby("permissionario_id")["produto"]
+            .apply(
+                lambda valores: ", ".join(
+                    sorted(
+                        {
+                            produto
+                            for produto in valores
+                            if produto
+                        }
+                    )
+                )
+            )
+            .reset_index(name="produtos_vinculados")
+        )
+
+        df_lista = df_permissionarios.merge(
+            produtos_agrupados,
+            left_on="id",
+            right_on="permissionario_id",
+            how="left"
+        )
+
+    df_lista["produtos_vinculados"] = (
+        df_lista["produtos_vinculados"]
+        .fillna("")
+    )
+
+    df_lista = df_lista[
+        ["nome", "whatsapp", "produtos_vinculados"]
+    ].rename(columns={
+        "nome": "Nome",
+        "whatsapp": "WhatsApp",
+        "produtos_vinculados": "Produtos vinculados"
+    })
+
+    return df_lista.sort_values("Nome").reset_index(drop=True)
+
+
+def gerar_excel_permissionarios(df_lista):
+    arquivo = BytesIO()
+
+    with pd.ExcelWriter(
+        arquivo,
+        engine="openpyxl"
+    ) as writer:
+        df_lista.to_excel(
+            writer,
+            index=False,
+            sheet_name="Permissionários"
+        )
+
+        planilha = writer.sheets["Permissionários"]
+        planilha.freeze_panes = "A2"
+        planilha.auto_filter.ref = planilha.dimensions
+
+        preenchimento = PatternFill(
+            fill_type="solid",
+            fgColor="1F4E79"
+        )
+
+        for celula in planilha[1]:
+            celula.font = Font(
+                bold=True,
+                color="FFFFFF"
+            )
+            celula.fill = preenchimento
+            celula.alignment = Alignment(
+                horizontal="center",
+                vertical="center"
+            )
+
+        planilha.column_dimensions["A"].width = 32
+        planilha.column_dimensions["B"].width = 22
+        planilha.column_dimensions["C"].width = 85
+
+        for linha in planilha.iter_rows(min_row=2):
+            linha[1].number_format = "@"
+
+            for celula in linha:
+                celula.alignment = Alignment(
+                    vertical="top",
+                    wrap_text=True
+                )
+
+    arquivo.seek(0)
+    return arquivo.getvalue()
+
+
+def gerar_pdf_permissionarios(df_lista):
+    arquivo = BytesIO()
+
+    documento = SimpleDocTemplate(
+        arquivo,
+        pagesize=landscape(A4),
+        leftMargin=24,
+        rightMargin=24,
+        topMargin=24,
+        bottomMargin=24
+    )
+
+    estilos = getSampleStyleSheet()
+
+    estilo_titulo = ParagraphStyle(
+        "titulo_lista_permissionarios",
+        parent=estilos["Title"],
+        fontSize=17,
+        leading=20,
+        alignment=TA_CENTER,
+        spaceAfter=5
+    )
+
+    estilo_info = ParagraphStyle(
+        "info_lista_permissionarios",
+        parent=estilos["Normal"],
+        fontSize=8.5,
+        leading=11,
+        alignment=TA_CENTER,
+        textColor=colors.grey
+    )
+
+    estilo_cabecalho = ParagraphStyle(
+        "cabecalho_lista_permissionarios",
+        parent=estilos["Normal"],
+        fontName="Helvetica-Bold",
+        fontSize=9,
+        leading=11,
+        alignment=TA_CENTER,
+        textColor=colors.white
+    )
+
+    estilo_celula = ParagraphStyle(
+        "celula_lista_permissionarios",
+        parent=estilos["Normal"],
+        fontSize=8.5,
+        leading=11,
+        alignment=TA_LEFT
+    )
+
+    elementos = [
+        Paragraph("Lista de Permissionários", estilo_titulo),
+        Paragraph(
+            "Nome, WhatsApp e produtos vinculados",
+            estilo_info
+        ),
+        Paragraph(
+            f"Gerado em {agora_brasil().strftime('%d/%m/%Y %H:%M')}",
+            estilo_info
+        ),
+        Spacer(1, 12)
+    ]
+
+    dados = [[
+        Paragraph("Nome", estilo_cabecalho),
+        Paragraph("WhatsApp", estilo_cabecalho),
+        Paragraph("Produtos vinculados", estilo_cabecalho)
+    ]]
+
+    for _, linha in df_lista.iterrows():
+        dados.append([
+            Paragraph(
+                escape(str(linha.get("Nome", ""))),
+                estilo_celula
+            ),
+            Paragraph(
+                escape(str(linha.get("WhatsApp", ""))),
+                estilo_celula
+            ),
+            Paragraph(
+                escape(
+                    str(linha.get("Produtos vinculados", ""))
+                    or "Sem produtos vinculados"
+                ),
+                estilo_celula
+            )
+        ])
+
+    tabela = Table(
+        dados,
+        colWidths=[190, 135, 425],
+        repeatRows=1
+    )
+
+    tabela.setStyle(TableStyle([
+        (
+            "BACKGROUND",
+            (0, 0),
+            (-1, 0),
+            colors.HexColor("#1F4E79")
+        ),
+        (
+            "TEXTCOLOR",
+            (0, 0),
+            (-1, 0),
+            colors.white
+        ),
+        (
+            "GRID",
+            (0, 0),
+            (-1, -1),
+            0.35,
+            colors.grey
+        ),
+        (
+            "VALIGN",
+            (0, 0),
+            (-1, -1),
+            "TOP"
+        ),
+        (
+            "ROWBACKGROUNDS",
+            (0, 1),
+            (-1, -1),
+            [colors.white, colors.whitesmoke]
+        ),
+        (
+            "LEFTPADDING",
+            (0, 0),
+            (-1, -1),
+            5
+        ),
+        (
+            "RIGHTPADDING",
+            (0, 0),
+            (-1, -1),
+            5
+        ),
+        (
+            "TOPPADDING",
+            (0, 0),
+            (-1, -1),
+            5
+        ),
+        (
+            "BOTTOMPADDING",
+            (0, 0),
+            (-1, -1),
+            5
+        )
+    ]))
+
+    elementos.append(tabela)
+    documento.build(elementos)
+
+    arquivo.seek(0)
+    return arquivo.getvalue()
+
+
+def aba_lista_permissionarios(supabase):
+    st.subheader("📋 Lista de permissionários")
+
+    try:
+        df_lista = montar_lista_permissionarios(supabase)
+    except Exception as erro:
+        st.error(
+            f"Erro ao montar a lista de permissionários: {erro}"
+        )
+        return
+
+    if df_lista.empty:
+        st.info("Nenhum permissionário cadastrado.")
+        return
+
+    st.caption(
+        f"Total de permissionários: {len(df_lista)}"
+    )
+
+    st.dataframe(
+        df_lista,
+        width="stretch",
+        hide_index=True
+    )
+
+    try:
+        arquivo_excel = gerar_excel_permissionarios(df_lista)
+        arquivo_pdf = gerar_pdf_permissionarios(df_lista)
+    except Exception as erro:
+        st.error(
+            f"Erro ao preparar os arquivos para download: {erro}"
+        )
+        return
+
+    coluna_excel, coluna_pdf = st.columns(2)
+
+    with coluna_excel:
+        st.download_button(
+            "📥 Baixar Excel",
+            data=arquivo_excel,
+            file_name="lista_permissionarios.xlsx",
+            mime=(
+                "application/vnd.openxmlformats-officedocument."
+                "spreadsheetml.sheet"
+            ),
+            width="stretch"
+        )
+
+    with coluna_pdf:
+        st.download_button(
+            "📥 Baixar PDF",
+            data=arquivo_pdf,
+            file_name="lista_permissionarios.pdf",
+            mime="application/pdf",
+            width="stretch"
+        )
+
+
+def tela_envio_links_permissionarios(supabase):
+    st.title("📨 Envio de links aos permissionários")
+    aba_envio_manual(supabase)
+
+
+def tela_permissionarios_cotacao(supabase):
+    st.title("🧑‍🌾 Permissionários")
+
+    abas = st.tabs([
+        "Envio de links",
+        "Respostas"
+    ])
+
+    with abas[0]:
+        aba_envio_manual(supabase)
+
+    with abas[1]:
+        tela_respostas_permissionarios(
+            supabase,
+            mostrar_titulo=False
+        )
+
 def tela_permissionarios_admin(
     supabase,
     carregar_produtos,
@@ -1367,7 +1985,8 @@ def tela_permissionarios_admin(
         "Produtos vinculados",
         "Mensagem e link",
         "Envio manual",
-        "Respostas"
+        "Respostas",
+        "Lista / Exportação"
     ])
 
     with abas[0]:
@@ -1402,9 +2021,14 @@ def tela_permissionarios_admin(
     with abas[5]:
         aba_respostas_admin(supabase)
 
+    with abas[6]:
+        aba_lista_permissionarios(supabase)
 
-def tela_respostas_permissionarios(supabase):
-    st.title("📊 Respostas dos Permissionários")
+
+
+def tela_respostas_permissionarios(supabase, mostrar_titulo=True):
+    if mostrar_titulo:
+        st.title("📊 Respostas dos Permissionários")
 
     # ================= FILTROS =================
     st.subheader("🔎 Filtros")
