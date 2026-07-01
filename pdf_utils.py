@@ -8,6 +8,10 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet
 
 from utils import corrigir_classe
+from graficos_utils import (
+    obter_estilo_linha,
+    aplicar_estilo_impressao
+)
 
 
 def adicionar_numero_pagina(canvas, doc):
@@ -189,7 +193,7 @@ def gerar_pdf(df, nome_pdf):
         elementos.append(Paragraph("AMA - Autarquia Municipal de Abastecimento", estilo_sub))
         elementos.append(Paragraph("Diretor Executivo: Celso Candido Almeida Leal", estilo_sub))
         elementos.append(Paragraph("Relatório de Cotação de Preços", estilo_titulo))
-        elementos.append(Spacer(1, 6))
+        elementos.append(Spacer(1, 6))  
 
         # -------- CLASSE E DATA LADO A LADO -------- #
 
@@ -585,14 +589,52 @@ def gerar_pdf_analise_precos(
 
             fig, ax = plt.subplots(figsize=(7, 3.2))
 
-            ax.barh(
+            valores = pd.to_numeric(
+                df_plot[nome_coluna_valor],
+                errors="coerce"
+            ).fillna(0)
+
+            barras = ax.barh(
                 df_plot["produto"].astype(str),
-                df_plot[nome_coluna_valor].astype(float)
+                valores,
+                facecolor="white",
+                edgecolor="black",
+                linewidth=1.2
             )
 
+            for barra, valor in zip(barras, valores):
+                if valor >= 0:
+                    barra.set_hatch("///")
+                    deslocamento = max(valores.abs().max() * 0.02, 0.5)
+                    posicao_texto = valor + deslocamento
+                    alinhamento = "left"
+                else:
+                    barra.set_hatch("\\\\")
+                    deslocamento = max(valores.abs().max() * 0.02, 0.5)
+                    posicao_texto = valor - deslocamento
+                    alinhamento = "right"
+
+                ax.text(
+                    posicao_texto,
+                    barra.get_y() + barra.get_height() / 2,
+                    f"{valor:.2f}%".replace(".", ","),
+                    va="center",
+                    ha=alinhamento,
+                    fontsize=8,
+                    fontweight="bold"
+                )
+
+            limite = max(valores.abs().max(), 1)
+            margem = limite * 0.18
+            ax.set_xlim(
+                min(valores.min(), 0) - margem,
+                max(valores.max(), 0) + margem
+            )
+
+            ax.axvline(0, color="black", linewidth=0.8)
             ax.set_title(titulo)
             ax.set_xlabel("Variação (%)")
-            ax.grid(axis="x", alpha=0.3)
+            aplicar_estilo_impressao(ax)
 
             fig.tight_layout()
             fig.savefig(caminho, dpi=180)
@@ -1480,16 +1522,25 @@ def gerar_pdf_produto_analise(
 
         fig, ax = plt.subplots(figsize=(7, 3))
 
+        marcador, estilo_linha = obter_estilo_linha(0)
+
         ax.plot(
             df_produto["data"],
             df_produto["preco_medio"],
-            marker="o"
+            color="black",
+            linestyle=estilo_linha,
+            marker=marcador,
+            linewidth=2,
+            markersize=7,
+            markerfacecolor="white",
+            markeredgecolor="black",
+            markeredgewidth=1.2
         )
 
         ax.set_title(f"Evolução do preço médio - {produto_sel}")
         ax.set_xlabel("Data")
         ax.set_ylabel("Preço médio (R$)")
-        ax.grid(True, alpha=0.3)
+        aplicar_estilo_impressao(ax)
 
         fig.autofmt_xdate()
         fig.tight_layout()

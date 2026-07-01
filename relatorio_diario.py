@@ -255,15 +255,45 @@ def preparar_relatorio_diario(df_todas, data_ref, classe_sel="Todas"):
             ["_ordem_alerta", "classe", "produto"]
         ).drop(columns=["_ordem_alerta"])
 
-    maior_alta = comparativo.sort_values(
+    # Considera nos rankings somente produtos que possuem valor/kg anterior
+    # válido. Isso evita tratar produto sem histórico como alta ou queda de 0%.
+    comparaveis = comparativo[
+        comparativo["valor_kg_anterior"] > 0
+    ].copy()
+
+    ranking_altas = comparaveis[
+        comparaveis["variacao_percentual"] > 0
+    ].sort_values(
         "variacao_percentual",
         ascending=False
-    ).iloc[0]
+    ).head(5).copy()
 
-    maior_queda = comparativo.sort_values(
+    ranking_quedas = comparaveis[
+        comparaveis["variacao_percentual"] < 0
+    ].sort_values(
         "variacao_percentual",
         ascending=True
-    ).iloc[0]
+    ).head(5).copy()
+
+    if not ranking_altas.empty:
+        maior_alta = ranking_altas.iloc[0]
+    else:
+        maior_alta = pd.Series({
+            "produto": "Nenhum produto",
+            "variacao_percentual": 0.0,
+            "valor_kg_anterior": 0.0,
+            "valor_kg_atual": 0.0
+        })
+
+    if not ranking_quedas.empty:
+        maior_queda = ranking_quedas.iloc[0]
+    else:
+        maior_queda = pd.Series({
+            "produto": "Nenhum produto",
+            "variacao_percentual": 0.0,
+            "valor_kg_anterior": 0.0,
+            "valor_kg_atual": 0.0
+        })
 
     maior_preco_kg = df_dia.sort_values(
         "valor_kg",
@@ -305,6 +335,9 @@ def preparar_relatorio_diario(df_todas, data_ref, classe_sel="Todas"):
         "alertas": alertas,
         "resumo_classe": resumo_classe,
         "data_anterior": data_anterior,
+        "comparaveis": comparaveis,
+        "ranking_altas": ranking_altas,
+        "ranking_quedas": ranking_quedas,
         "maior_alta": maior_alta,
         "maior_queda": maior_queda,
         "maior_preco_kg": maior_preco_kg,
@@ -773,7 +806,8 @@ def tela_relatorio_diario(supabase):
     st.info(
         "Gere um relatório diário com resumo executivo, destaques do dia, alertas de variação, "
         "cotação completa por classe, observações e considerações automáticas. "
-        "As altas, quedas e alertas são calculados pelo valor/kg."
+        "As altas, quedas e alertas são calculados pelo valor/kg, considerando "
+        "nos rankings apenas produtos que também possuem cotação na data anterior."
     )
 
     try:

@@ -32,6 +32,7 @@ from post_produto_unitario import tela_post_produto_unitario
 from tela_importacoes_excel import tela_importacoes_excel
 from relatorio_diario import tela_relatorio_diario
 from relatorio_semanal import tela_relatorio_semanal
+from post_destaques_dia import tela_post_destaques_dia
 from solicitacoes import tela_solicitacoes
 from auth_utils import verificar_login_seguro
 from usuarios import tela_cadastro_usuarios
@@ -210,6 +211,7 @@ if st.session_state.logado:
             "Visualizar Dados",
             "Análise de Preços",
             "Posts Analíticos",
+            "Post Destaques do Dia",
             "Relatório Diário",
             "Relatório Semanal",
             "Post Unitário do Produto",
@@ -1573,6 +1575,16 @@ if st.session_state.logado:
             st.stop()
 
         tela_analise_precos(supabase)
+    # ==========================================
+
+    # ===================== POST DESTAQUES DO DIA
+    elif opcao == "Post Destaques do Dia":
+
+        if nivel not in ["admin", "cotacao"]:
+            st.error("Acesso restrito.")
+            st.stop()
+
+        tela_post_destaques_dia(supabase)
     # ==========================================
 
     # ===================== RELATÓRIO DIÁRIO

@@ -13,6 +13,10 @@ from matplotlib.lines import Line2D
 
 from dados_utils import carregar_todas_cotacoes
 from utils import corrigir_classe
+from graficos_utils import (
+    obter_estilo_linha,
+    aplicar_estilo_impressao
+)
 
 
 # ===================== FORMATAÇÕES =====================
@@ -254,22 +258,24 @@ def plotar_ranking_barras(ax, df_plot, titulo, tipo="alta"):
         df_plot = df_plot.sort_values("variacao_percentual", ascending=True)
         cor_barra = AZUL
         x_min = 0
-        x_max = max(float(df_plot["variacao_percentual"].max()), 5) * 1.16
+        x_max = max(float(df_plot["variacao_percentual"].max()), 5) * 1.20
     else:
         df_plot = df_plot.sort_values("variacao_percentual", ascending=False)
         cor_barra = VERMELHO
-        x_min = min(float(df_plot["variacao_percentual"].min()), -5) * 1.22
+        x_min = min(float(df_plot["variacao_percentual"].min()), -5) * 1.26
         x_max = 0
 
     valores = df_plot["variacao_percentual"].astype(float).reset_index(drop=True)
     rotulos = df_plot["produto_curto"].tolist()
     posicoes = list(range(len(df_plot)))
 
-    ax.barh(
+    barras = ax.barh(
         posicoes,
         valores,
         color=cor_barra,
-        alpha=0.96,
+        edgecolor="black",
+        linewidth=0.9,
+        alpha=0.92,
         height=0.46
     )
 
@@ -283,27 +289,25 @@ def plotar_ranking_barras(ax, df_plot, titulo, tipo="alta"):
 
     for y, rotulo in zip(posicoes, rotulos):
         ax.text(
-            -0.035,
+            -0.02,
             y,
             rotulo,
             ha="right",
             va="center",
-            fontsize=8.1,
+            fontsize=7.9,
             color=CINZA_TEXTO,
             linespacing=0.88,
+            rotation=12,
+            rotation_mode="anchor",
             transform=transformacao_rotulo,
             clip_on=False
         )
 
     criar_titulo_card(ax, titulo)
 
-    ax.grid(axis="x", color="#B8C2D3", alpha=0.28, linestyle="--", linewidth=0.65)
-    ax.set_axisbelow(True)
+    aplicar_estilo_impressao(ax)
+    ax.grid(False)
 
-    for spine in ["top", "right", "left"]:
-        ax.spines[spine].set_visible(False)
-
-    ax.spines["bottom"].set_color("#AAB4C3")
     ax.tick_params(axis="x", colors=CINZA_TEXTO, labelsize=8.2)
     ax.set_xlabel("Variação (%)", color=CINZA_TEXTO, fontsize=8.6)
     ax.set_ylabel("")
@@ -314,12 +318,12 @@ def plotar_ranking_barras(ax, df_plot, titulo, tipo="alta"):
         referencia = max(x_max, 1)
         for i, v in enumerate(valores):
             ax.text(
-                v - referencia * 0.018,
+                v + referencia * 0.025,
                 i,
                 formatar_percentual_curto(v),
                 va="center",
-                ha="right",
-                color="white",
+                ha="left",
+                color=CINZA_TEXTO,
                 fontsize=8.0,
                 fontweight="bold"
             )
@@ -327,12 +331,12 @@ def plotar_ranking_barras(ax, df_plot, titulo, tipo="alta"):
         referencia = max(abs(x_min), 1)
         for i, v in enumerate(valores):
             ax.text(
-                v + referencia * 0.035,
+                v - referencia * 0.035,
                 i,
                 formatar_percentual_curto(v),
                 va="center",
-                ha="left",
-                color="white",
+                ha="right",
+                color=CINZA_TEXTO,
                 fontsize=8.0,
                 fontweight="bold"
             )
@@ -342,26 +346,49 @@ def plotar_grafico_historico(ax, historico_3):
 
     if historico_3 is None or historico_3.empty:
         ax.axis("off")
-        ax.text(0.5, 0.5, "Sem histórico disponível", ha="center", va="center", color=CINZA_TEXTO, fontsize=12, transform=ax.transAxes)
+        ax.text(
+            0.5,
+            0.5,
+            "Sem histórico disponível",
+            ha="center",
+            va="center",
+            color=CINZA_TEXTO,
+            fontsize=12,
+            transform=ax.transAxes
+        )
         return
 
     cores = [AZUL, "#FF7A00", "#2EAF4A", VERMELHO, "#6F42C1"]
 
-    datas_validas = pd.to_datetime(historico_3["data"], errors="coerce").dropna()
+    datas_validas = pd.to_datetime(
+        historico_3["data"],
+        errors="coerce"
+    ).dropna()
+
     data_min = datas_validas.min() if not datas_validas.empty else None
     data_max = datas_validas.max() if not datas_validas.empty else None
 
-    for idx, produto in enumerate(historico_3["produto"].dropna().unique()):
-        df_prod = historico_3[historico_3["produto"] == produto].copy()
+    for idx, produto in enumerate(
+        historico_3["produto"].dropna().unique()
+    ):
+        df_prod = historico_3[
+            historico_3["produto"] == produto
+        ].copy()
         df_prod = df_prod.sort_values("data")
+
+        marcador, estilo_linha = obter_estilo_linha(idx)
 
         ax.plot(
             df_prod["data"],
             df_prod["valor_kg"],
             linewidth=2.2,
-            marker="o",
-            markersize=3.4,
+            linestyle=estilo_linha,
+            marker=marcador,
+            markersize=5.4,
             color=cores[idx % len(cores)],
+            markerfacecolor="white",
+            markeredgecolor="black",
+            markeredgewidth=0.9,
             label=limitar_texto(produto, 28)
         )
 
@@ -373,14 +400,9 @@ def plotar_grafico_historico(ax, historico_3):
         pad=12
     )
 
-    ax.grid(True, alpha=0.24, color="#A9B6C8", linestyle="--", linewidth=0.65)
+    aplicar_estilo_impressao(ax)
+    ax.grid(True, alpha=0.28, color="#A9B6C8", linestyle=":", linewidth=0.65)
     ax.set_axisbelow(True)
-
-    for spine in ["top", "right"]:
-        ax.spines[spine].set_visible(False)
-
-    ax.spines["bottom"].set_color("#AAB4C3")
-    ax.spines["left"].set_color("#AAB4C3")
 
     ax.tick_params(axis="x", colors=CINZA_TEXTO, rotation=35, labelsize=8.2)
     ax.tick_params(axis="y", colors=CINZA_TEXTO, labelsize=8.2)
@@ -393,14 +415,20 @@ def plotar_grafico_historico(ax, historico_3):
         intervalo = max(1, int(round(dias / 4)))
         ax.xaxis.set_major_locator(mdates.DayLocator(interval=intervalo))
     else:
-        ax.xaxis.set_major_locator(mdates.AutoDateLocator(minticks=3, maxticks=5))
+        ax.xaxis.set_major_locator(
+            mdates.AutoDateLocator(minticks=3, maxticks=5)
+        )
 
-    ax.xaxis.set_major_formatter(mdates.DateFormatter("%d/%m"))
+    ax.xaxis.set_major_formatter(
+        mdates.DateFormatter("%d/%m")
+    )
 
     ax.legend(
         fontsize=7.8,
         loc="upper left",
-        frameon=False,
+        frameon=True,
+        edgecolor="black",
+        facecolor="white",
         labelcolor=CINZA_TEXTO
     )
 
@@ -683,11 +711,11 @@ def gerar_post_png(
     # RANKINGS DE BARRAS
     # =========================================================
     add_card(fig, 0.065, 0.505, 0.415, 0.195, radius=0.018, facecolor="#FFFFFF", edgecolor="#DCE4EF", shadow=True)
-    ax_altas = fig.add_axes([0.145, 0.535, 0.292, 0.13], zorder=5)
+    ax_altas = fig.add_axes([0.160, 0.535, 0.275, 0.13], zorder=5)
     plotar_ranking_barras(ax_altas, ranking_altas, "Top 5 maiores altas", tipo="alta")
 
     add_card(fig, 0.515, 0.505, 0.415, 0.195, radius=0.018, facecolor="#FFFFFF", edgecolor="#DCE4EF", shadow=True)
-    ax_quedas = fig.add_axes([0.612, 0.535, 0.270, 0.13], zorder=5)
+    ax_quedas = fig.add_axes([0.640, 0.535, 0.240, 0.13], zorder=5)
     plotar_ranking_barras(ax_quedas, ranking_quedas, "Top 5 maiores quedas", tipo="queda")
 
     # =========================================================

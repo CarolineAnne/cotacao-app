@@ -4,11 +4,16 @@ import unicodedata
 
 import streamlit as st
 import pandas as pd
+import matplotlib.pyplot as plt
 
 from datetime import datetime
 
 from dados_utils import carregar_todas_cotacoes
 from utils import corrigir_classe
+from graficos_utils import (
+    obter_estilo_linha,
+    aplicar_estilo_impressao
+)
 from pdf_utils import gerar_pdf_analise_precos, gerar_pdf_produto_analise
 
 from observacoes_produtos import (
@@ -1261,9 +1266,70 @@ def tela_analise_precos(supabase):
         if ranking_altas.empty:
             st.info("Nenhum produto com alta no período.")
         else:
-            st.bar_chart(
-                ranking_altas.set_index("produto")["variacao_percentual"]
+            df_altas_plot = ranking_altas.copy()
+            df_altas_plot = df_altas_plot.sort_values(
+                "variacao_percentual",
+                ascending=True
             )
+
+            fig_altas, ax_altas = plt.subplots(
+                figsize=(8, 5)
+            )
+
+            barras = ax_altas.barh(
+                df_altas_plot["produto"],
+                df_altas_plot["variacao_percentual"],
+                facecolor="white",
+                edgecolor="black",
+                linewidth=1.2
+            )
+
+            for barra, valor in zip(
+                barras,
+                df_altas_plot["variacao_percentual"]
+            ):
+                ax_altas.text(
+                    barra.get_width() + 0.5,
+                    barra.get_y() + barra.get_height() / 2,
+                    f"{valor:.2f}%",
+                    va="center",
+                    ha="left",
+                    fontsize=9,
+                    fontweight="bold"
+                )
+
+            ax_altas.set_title(
+                "Maiores altas no período"
+            )
+            ax_altas.set_xlabel(
+                "Variação percentual (%)"
+            )
+            ax_altas.set_ylabel("Produto")
+
+            aplicar_estilo_impressao(
+                ax_altas
+            )
+            ax_altas.grid(False)
+            ax_altas.tick_params(
+                axis="y",
+                labelsize=8
+            )
+            plt.setp(
+                ax_altas.get_yticklabels(),
+                rotation=10,
+                ha="right",
+                va="center",
+                rotation_mode="anchor"
+            )
+
+            fig_altas.subplots_adjust(
+                left=0.38,
+                right=0.94,
+                top=0.88,
+                bottom=0.16
+            )
+            st.pyplot(fig_altas)
+            plt.close(fig_altas)
 
     with col_quedas:
         st.markdown("### 📉 Maiores quedas")
@@ -1271,9 +1337,70 @@ def tela_analise_precos(supabase):
         if ranking_quedas.empty:
             st.info("Nenhum produto com queda no período.")
         else:
-            st.bar_chart(
-                ranking_quedas.set_index("produto")["variacao_percentual"]
+            df_quedas_plot = ranking_quedas.copy()
+            df_quedas_plot = df_quedas_plot.sort_values(
+                "variacao_percentual",
+                ascending=True
             )
+
+            fig_quedas, ax_quedas = plt.subplots(
+                figsize=(8, 5)
+            )
+
+            barras = ax_quedas.barh(
+                df_quedas_plot["produto"],
+                df_quedas_plot["variacao_percentual"],
+                facecolor="white",
+                edgecolor="black",
+                linewidth=1.2
+            )
+
+            for barra, valor in zip(
+                barras,
+                df_quedas_plot["variacao_percentual"]
+            ):
+                ax_quedas.text(
+                    valor - 0.5,
+                    barra.get_y() + barra.get_height() / 2,
+                    f"{valor:.2f}%",
+                    va="center",
+                    ha="right",
+                    fontsize=9,
+                    fontweight="bold"
+                )
+
+            ax_quedas.set_title(
+                "Maiores quedas no período"
+            )
+            ax_quedas.set_xlabel(
+                "Variação percentual (%)"
+            )
+            ax_quedas.set_ylabel("Produto")
+
+            aplicar_estilo_impressao(
+                ax_quedas
+            )
+            ax_quedas.grid(False)
+            ax_quedas.tick_params(
+                axis="y",
+                labelsize=8
+            )
+            plt.setp(
+                ax_quedas.get_yticklabels(),
+                rotation=10,
+                ha="right",
+                va="center",
+                rotation_mode="anchor"
+            )
+
+            fig_quedas.subplots_adjust(
+                left=0.38,
+                right=0.94,
+                top=0.88,
+                bottom=0.16
+            )
+            st.pyplot(fig_quedas)
+            plt.close(fig_quedas)
 
     # ================= HISTÓRICO POR PRODUTO =================
     st.divider()
@@ -1291,10 +1418,53 @@ def tela_analise_precos(supabase):
         if df_produto.empty:
             st.warning("Não há dados para o produto selecionado.")
         else:
-            grafico = df_produto[["data", "preco_medio"]].copy()
-            grafico = grafico.set_index("data")
+            grafico = df_produto[
+                ["data", "preco_medio"]
+            ].copy()
 
-            st.line_chart(grafico)
+            grafico["data"] = pd.to_datetime(
+                grafico["data"],
+                errors="coerce"
+            )
+
+            grafico = grafico.dropna(
+                subset=["data", "preco_medio"]
+            ).sort_values("data")
+
+            fig_hist, ax_hist = plt.subplots(
+                figsize=(9, 4.5)
+            )
+
+            marcador, estilo_linha = obter_estilo_linha(0)
+
+            ax_hist.plot(
+                grafico["data"],
+                grafico["preco_medio"],
+                color="black",
+                linestyle=estilo_linha,
+                marker=marcador,
+                linewidth=2,
+                markersize=7,
+                markerfacecolor="white",
+                markeredgecolor="black",
+                markeredgewidth=1.2
+            )
+
+            ax_hist.set_title(
+                f"Histórico de preço - {produto_sel}"
+            )
+            ax_hist.set_xlabel("Data")
+            ax_hist.set_ylabel("Preço médio (R$)")
+
+            aplicar_estilo_impressao(
+                ax_hist
+            )
+
+            fig_hist.autofmt_xdate()
+            fig_hist.tight_layout()
+
+            st.pyplot(fig_hist)
+            plt.close(fig_hist)
 
             menor = df_produto["preco_medio"].min()
             maior = df_produto["preco_medio"].max()

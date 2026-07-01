@@ -6,6 +6,11 @@ import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 
+from graficos_utils import (
+    obter_estilo_linha,
+    aplicar_estilo_impressao
+)
+
 from reportlab.platypus import (
     SimpleDocTemplate,
     Table,
@@ -587,14 +592,26 @@ def criar_grafico_top_3_pdf(evolucao_top_3):
 
     figura, eixo = plt.subplots(figsize=(7.4, 3.6))
 
-    for produto, grupo in evolucao_top_3.groupby("produto"):
+    for indice, (produto, grupo) in enumerate(
+        evolucao_top_3.groupby("produto")
+    ):
         grupo = grupo.sort_values("data")
+
+        marcador, estilo_linha = obter_estilo_linha(
+            indice
+        )
 
         eixo.plot(
             grupo["data"],
             grupo["valor_kg"],
-            marker="o",
+            color="black",
+            linestyle=estilo_linha,
+            marker=marcador,
             linewidth=2,
+            markersize=7,
+            markerfacecolor="white",
+            markeredgecolor="black",
+            markeredgewidth=1.2,
             label=str(produto)
         )
 
@@ -603,10 +620,12 @@ def criar_grafico_top_3_pdf(evolucao_top_3):
     )
     eixo.set_xlabel("Data")
     eixo.set_ylabel("Valor/kg médio (R$)")
-    eixo.grid(True, alpha=0.25)
+    aplicar_estilo_impressao(eixo)
     eixo.legend(
         loc="best",
-        fontsize=8
+        fontsize=8,
+        frameon=True,
+        edgecolor="black"
     )
 
     figura.autofmt_xdate()
@@ -966,7 +985,7 @@ def gerar_pdf_relatorio_semanal(
     elementos.append(
         criar_tabela_pdf(
             tabela_produtos,
-            larguras=[58, 145, 42, 32, 55, 55, 65, 55, 44],
+            larguras=[58, 145, 42, 32, 55, 55, 65, 55],
             fonte=9,
             colunas_texto=[0, 1, 2]
         )
@@ -1238,11 +1257,37 @@ def tela_relatorio_semanal(supabase):
         "%d/%m/%Y"
     )
 
-    grafico = evolucao_tela[
-        ["data", "valor_kg_medio"]
-    ].set_index("data")
+    figura_diaria, eixo_diario = plt.subplots(
+        figsize=(10, 4)
+    )
 
-    st.line_chart(grafico)
+    eixo_diario.plot(
+        evolucao_tela["data"],
+        evolucao_tela["valor_kg_medio"],
+        color="black",
+        linestyle="-",
+        marker="o",
+        linewidth=2,
+        markersize=7,
+        markerfacecolor="white",
+        markeredgecolor="black"
+    )
+
+    eixo_diario.set_title(
+        "Evolução diária do valor/kg médio"
+    )
+
+    eixo_diario.set_xlabel("Data")
+    eixo_diario.set_ylabel("Valor/kg médio (R$)")
+
+    aplicar_estilo_impressao(eixo_diario)
+
+    figura_diaria.autofmt_xdate()
+    figura_diaria.tight_layout()
+
+    st.pyplot(figura_diaria)
+
+    plt.close(figura_diaria)
 
     evolucao_tabela = evolucao_tela.rename(columns={
         "produtos": "Produtos",
@@ -1292,7 +1337,55 @@ def tela_relatorio_semanal(supabase):
             .sort_index()
         )
 
-        st.line_chart(grafico_top_3_tela)
+        figura, eixo = plt.subplots(
+            figsize=(10, 4.5)
+        )
+
+        for indice, produto in enumerate(
+            grafico_top_3_tela.columns
+        ):
+            marcador, estilo_linha = obter_estilo_linha(
+                indice
+            )
+
+            serie = grafico_top_3_tela[
+                produto
+            ].dropna()
+
+            eixo.plot(
+                serie.index,
+                serie.values,
+                color="black",
+                linestyle=estilo_linha,
+                marker=marcador,
+                linewidth=2,
+                markersize=7,
+                markerfacecolor="white",
+                markeredgecolor="black",
+                markeredgewidth=1.2,
+                label=str(produto)
+            )
+
+        eixo.set_title(
+            "Evolução dos três produtos que mais variaram"
+        )
+
+        eixo.set_xlabel("Data")
+        eixo.set_ylabel("Valor/kg médio (R$)")
+
+        aplicar_estilo_impressao(eixo)
+
+        eixo.legend(
+            frameon=True,
+            edgecolor="black"
+        )
+
+        figura.autofmt_xdate()
+        figura.tight_layout()
+
+        st.pyplot(figura)
+
+        plt.close(figura)
 
         tabela_top_3_tela = top_3_variacoes.copy()
 

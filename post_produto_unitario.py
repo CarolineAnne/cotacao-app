@@ -13,6 +13,10 @@ from datetime import datetime
 
 from dados_utils import carregar_produtos, carregar_todas_cotacoes
 from produtos_info_utils import carregar_info_produto
+from graficos_utils import (
+    obter_estilo_linha,
+    aplicar_estilo_impressao
+)
 
 
 def formatar_moeda(valor):
@@ -392,16 +396,31 @@ def gerar_post_produto_png(
         .sort_values("data")
     )
 
+    marcador, estilo_linha = obter_estilo_linha(0)
+
     ax_graf.plot(
         df_grafico["data"],
         df_grafico["valor_kg"],
-        marker="o",
+        color="white",
+        linestyle=estilo_linha,
+        marker=marcador,
         linewidth=2.4,
-        markersize=4.5
+        markersize=5.5,
+        markerfacecolor="#0B1A2B",
+        markeredgecolor="white",
+        markeredgewidth=1.2,
+        label="Preço por kg"
     )
 
     media_periodo = df_grafico["valor_kg"].mean()
-    ax_graf.axhline(media_periodo, linestyle="--", linewidth=1.2, alpha=0.7)
+    ax_graf.axhline(
+        media_periodo,
+        color="#BFC7D5",
+        linestyle="--",
+        linewidth=1.4,
+        alpha=0.95,
+        label="Média do período"
+    )
 
     ax_graf.set_title(
         "Comportamento dos preços no período",
@@ -422,6 +441,15 @@ def gerar_post_produto_png(
 
     ax_graf.xaxis.set_major_locator(mdates.AutoDateLocator())
     ax_graf.xaxis.set_major_formatter(mdates.DateFormatter("%d/%m"))
+
+    ax_graf.legend(
+        loc="best",
+        fontsize=8.5,
+        frameon=True,
+        facecolor="#0B1A2B",
+        edgecolor="white",
+        labelcolor="white"
+    )
 
     # ================= NUTRIÇÃO =================
     ax_nutri = fig.add_subplot(gs[18:22, 0:6])
@@ -725,9 +753,62 @@ def tela_post_produto_unitario(supabase):
         .sort_values("data")
     )
 
-    df_grafico = df_grafico.set_index("data")
+    marcador, estilo_linha = obter_estilo_linha(0)
 
-    st.line_chart(df_grafico["valor_kg"])
+    figura_grafico, eixo_grafico = plt.subplots(
+        figsize=(10, 4.5)
+    )
+
+    eixo_grafico.plot(
+        df_grafico["data"],
+        df_grafico["valor_kg"],
+        color="black",
+        linestyle=estilo_linha,
+        marker=marcador,
+        linewidth=2.2,
+        markersize=7,
+        markerfacecolor="white",
+        markeredgecolor="black",
+        markeredgewidth=1.2,
+        label="Preço por kg"
+    )
+
+    media_periodo_tela = df_grafico["valor_kg"].mean()
+
+    eixo_grafico.axhline(
+        media_periodo_tela,
+        color="black",
+        linestyle="--",
+        linewidth=1.3,
+        label="Média do período"
+    )
+
+    eixo_grafico.set_title(
+        f"Comportamento dos preços - {produto_nome}"
+    )
+    eixo_grafico.set_xlabel("Data")
+    eixo_grafico.set_ylabel("Preço por kg (R$)")
+
+    aplicar_estilo_impressao(eixo_grafico)
+
+    eixo_grafico.legend(
+        loc="best",
+        frameon=True,
+        edgecolor="black"
+    )
+
+    eixo_grafico.xaxis.set_major_locator(
+        mdates.AutoDateLocator()
+    )
+    eixo_grafico.xaxis.set_major_formatter(
+        mdates.DateFormatter("%d/%m")
+    )
+
+    figura_grafico.autofmt_xdate()
+    figura_grafico.tight_layout()
+
+    st.pyplot(figura_grafico)
+    plt.close(figura_grafico)
 
     st.markdown("---")
 
