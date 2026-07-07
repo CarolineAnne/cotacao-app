@@ -826,6 +826,96 @@ if st.session_state.logado:
         # LOOP
         cotacoes = []
     
+
+        def salvar_produto_cotacao_individual(
+            produto_c,
+            classe_c,
+            unidade_c,
+            kg_c,
+            lista_precos,
+            data_str_c,
+            data_obj
+        ):
+            """
+            Salva somente um produto na cotação da data selecionada.
+            Se o produto já existir nessa data, ele é substituído.
+            """
+
+            if not lista_precos:
+                st.session_state.msg_cotacao = (
+                    "error",
+                    f"Informe pelo menos um preço válido para salvar {produto_c}."
+                )
+                st.rerun()
+
+            preco_min_c = min(lista_precos)
+            preco_max_c = max(lista_precos)
+            preco_medio_c = sum(lista_precos) / len(lista_precos)
+
+            try:
+                kg_c = float(kg_c)
+            except Exception:
+                kg_c = 1
+
+            if kg_c <= 0:
+                kg_c = 1
+
+            valor_kg_c = preco_medio_c / kg_c
+
+            registro = {
+                "data": data_str_c,
+                "classe": corrigir_classe(classe_c),
+                "produto": produto_c,
+                "unidade": unidade_c,
+                "kg": int(round(kg_c)),
+                "preco_min": preco_min_c,
+                "preco_max": preco_max_c,
+                "preco_medio": preco_medio_c,
+                "valor_kg": valor_kg_c,
+                "precos_digitados": lista_precos
+            }
+
+            try:
+                # Remove somente este produto nesta data, sem apagar a cotação inteira.
+                supabase.table("cotacoes")\
+                    .delete()\
+                    .eq("data", data_str_c)\
+                    .eq("produto", produto_c)\
+                    .execute()
+
+                response = supabase.table("cotacoes").insert(
+                    registro
+                ).execute()
+
+                if response.data:
+                    st.session_state.msg_cotacao = (
+                        "success",
+                        f"{produto_c} salvo com sucesso para {data_obj.strftime('%d/%m/%Y')}."
+                    )
+
+                    registrar_acao(
+                        supabase,
+                        "Cotação salva por produto",
+                        "Cotação do Dia",
+                        f"Produto {produto_c} salvo individualmente para a data {data_obj.strftime('%d/%m/%Y')}"
+                    )
+
+                    st.cache_data.clear()
+                    st.rerun()
+
+                st.session_state.msg_cotacao = (
+                    "error",
+                    f"Erro ao salvar {produto_c}."
+                )
+                st.rerun()
+
+            except Exception as e:
+                st.session_state.msg_cotacao = (
+                    "error",
+                    f"Erro ao salvar {produto_c}: {e}"
+                )
+                st.rerun()
+
         for _, row in produtos.iterrows():
             produto = str(row["nome"]).strip().upper()
     
@@ -983,6 +1073,23 @@ if st.session_state.logado:
                         if abs(variacao) > 30:
                             st.warning(f"⚠️ Variação alta: {variacao:.1f}%")
     
+            with col1:
+                st.write("")
+
+                if st.button(
+                    "Salvar",
+                    key=f"salvar_produto_{produto}"
+                ):
+                    salvar_produto_cotacao_individual(
+                        produto_c=produto,
+                        classe_c=row["classe"],
+                        unidade_c=row["unidade"],
+                        kg_c=row["kg"],
+                        lista_precos=precos_validos.copy(),
+                        data_str_c=data_str,
+                        data_obj=data
+                    )
+
             st.divider()
     
             cotacoes.append((
