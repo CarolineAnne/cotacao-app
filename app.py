@@ -269,9 +269,10 @@ if st.session_state.logado:
             <style>
             /* Botão de voltar das páginas */
             .st-key-btn_voltar_menu_cotacao {
-                position: sticky;
-                top: 12px;
-                z-index: 999;
+                position: fixed;
+                top: 80px;
+                left: 18px;
+                z-index: 999999;
                 width: fit-content;
             }
 
