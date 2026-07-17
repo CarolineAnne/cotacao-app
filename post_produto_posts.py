@@ -3,7 +3,6 @@ import re
 import zipfile
 import pandas as pd
 import textwrap
-import tempfile
 import requests
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
@@ -455,12 +454,11 @@ def desenhar_imagem_produto(ax, imagem):
 
 
 def salvar_figura(fig):
-    temp = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
-    caminho = temp.name
-    temp.close()
+    buffer = BytesIO()
 
     fig.savefig(
-        caminho,
+        buffer,
+        format="png",
         dpi=220,
         facecolor=fig.get_facecolor(),
         bbox_inches="tight",
@@ -469,7 +467,7 @@ def salvar_figura(fig):
 
     plt.close(fig)
 
-    return caminho
+    return buffer.getvalue()
 
 
 # =========================================================
@@ -1015,15 +1013,12 @@ def gerar_posts_produto_png(
     return post_1, post_2
 
 
-def criar_zip_posts(produto_nome, caminho_post_1, caminho_post_2):
-    temp = tempfile.NamedTemporaryFile(delete=False, suffix=".zip")
-    caminho_zip = temp.name
-    temp.close()
-
+def criar_zip_posts(produto_nome, post_1_png, post_2_png):
+    buffer = BytesIO()
     nome_base = nome_arquivo_seguro(produto_nome)
 
-    with zipfile.ZipFile(caminho_zip, "w", zipfile.ZIP_DEFLATED) as zipf:
-        zipf.write(caminho_post_1, f"{nome_base}_post_1_cotacao.png")
-        zipf.write(caminho_post_2, f"{nome_base}_post_2_informacoes.png")
+    with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as zipf:
+        zipf.writestr(f"{nome_base}_post_1_cotacao.png", post_1_png)
+        zipf.writestr(f"{nome_base}_post_2_informacoes.png", post_2_png)
 
-    return caminho_zip
+    return buffer.getvalue()

@@ -283,7 +283,7 @@ def tela_post_produto_unitario(supabase):
 
     if st.button("🖼️ Gerar dois posts do produto", type="primary"):
         try:
-            caminho_post_1, caminho_post_2 = gerar_posts_produto_png(
+            post_1_png, post_2_png = gerar_posts_produto_png(
                 produto_nome=produto_nome,
                 produto_classe=produto_classe,
                 produto_unidade=produto_unidade,
@@ -294,43 +294,40 @@ def tela_post_produto_unitario(supabase):
                 df_periodo=df_periodo
             )
 
-            caminho_zip = criar_zip_posts(
+            posts_zip = criar_zip_posts(
                 produto_nome,
-                caminho_post_1,
-                caminho_post_2
+                post_1_png,
+                post_2_png
             )
 
             st.success("Dois posts gerados com sucesso.")
 
             st.subheader("Post 1 - Cotação e comportamento de preços")
-            st.image(caminho_post_1, caption="Post 1 - Cotação", use_container_width=True)
+            st.image(post_1_png, caption="Post 1 - Cotação", use_container_width=True)
 
-            with open(caminho_post_1, "rb") as arq1:
-                st.download_button(
-                    "⬇️ Baixar Post 1 - Cotação",
-                    data=arq1,
-                    file_name=f"{nome_arquivo_seguro(produto_nome)}_post_1_cotacao.png",
-                    mime="image/png"
-                )
+            st.download_button(
+                "⬇️ Baixar Post 1 - Cotação",
+                data=post_1_png,
+                file_name=f"{nome_arquivo_seguro(produto_nome)}_post_1_cotacao.png",
+                mime="image/png"
+            )
 
             st.subheader("Post 2 - Informações do produto")
-            st.image(caminho_post_2, caption="Post 2 - Informações", use_container_width=True)
+            st.image(post_2_png, caption="Post 2 - Informações", use_container_width=True)
 
-            with open(caminho_post_2, "rb") as arq2:
-                st.download_button(
-                    "⬇️ Baixar Post 2 - Informações",
-                    data=arq2,
-                    file_name=f"{nome_arquivo_seguro(produto_nome)}_post_2_informacoes.png",
-                    mime="image/png"
-                )
+            st.download_button(
+                "⬇️ Baixar Post 2 - Informações",
+                data=post_2_png,
+                file_name=f"{nome_arquivo_seguro(produto_nome)}_post_2_informacoes.png",
+                mime="image/png"
+            )
 
-            with open(caminho_zip, "rb") as arq_zip:
-                st.download_button(
-                    "📦 Baixar os dois posts em ZIP",
-                    data=arq_zip,
-                    file_name=f"{nome_arquivo_seguro(produto_nome)}_posts.zip",
-                    mime="application/zip"
-                )
+            st.download_button(
+                "📦 Baixar os dois posts em ZIP",
+                data=posts_zip,
+                file_name=f"{nome_arquivo_seguro(produto_nome)}_posts.zip",
+                mime="application/zip"
+            )
 
         except Exception as e:
             st.error(f"Erro ao gerar os posts: {e}")
