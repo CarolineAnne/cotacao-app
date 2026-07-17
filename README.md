@@ -82,6 +82,8 @@ venv\Scripts\python.exe -m unittest discover -s tests -v
 - `produtos.py`, `usuarios.py`, `solicitacoes.py`: telas administrativas e operacionais.
 - `tela_acompanhamento.py`: consulta e exportação dos registros de atividade do sistema.
 - `tela_cotacao_dia.py`: formulário e salvamento da cotação diária.
+- `post_produto_unitario.py`: tela Streamlit para gerar posts unitários de produtos.
+- `post_produto_posts.py`: geração dos PNGs e ZIP dos posts de produto.
 - `tela_sobre_produtos.py`: cadastro, consulta e PDF das informações dos produtos.
 - `tela_visualizar_dados.py`: consulta, PDF e exportações de cotações.
 - `tela_importacoes_excel.py`: importação de planilhas.
