@@ -1,15 +1,25 @@
+"""
+Script legado da versão SQLite local.
+
+O app atual usa Supabase em `db.py`. Este arquivo fica isolado em `legacy/`
+apenas para consulta histórica ou recuperação manual de dados antigos.
+"""
+
 import sqlite3
+from pathlib import Path
 
-# ------------------ CONEXÃO ------------------ #
+
+DB_LOCAL = Path(__file__).with_name("database.db")
+
+
 def conectar():
-    return sqlite3.connect("database.db")
+    return sqlite3.connect(DB_LOCAL)
 
-# ------------------ CRIAR TABELAS ------------------ #
+
 def criar_tabelas():
     conn = conectar()
     cursor = conn.cursor()
 
-    # -------- USUÁRIOS -------- #
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS usuarios (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -20,7 +30,6 @@ def criar_tabelas():
     )
     """)
 
-    # -------- PRODUTOS -------- #
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS produtos (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -31,7 +40,6 @@ def criar_tabelas():
     )
     """)
 
-    # -------- COTAÇÕES -------- #
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS cotacoes (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -50,21 +58,9 @@ def criar_tabelas():
     conn.commit()
     conn.close()
 
-# ------------------ CRIAR ADMIN PADRÃO ------------------ #
-def criar_admin():
-    conn = conectar()
-    cursor = conn.cursor()
 
-    cursor.execute("""
-    INSERT OR IGNORE INTO usuarios (id, nome, usuario, senha, nivel)
-    VALUES (1, 'Administrador', 'admin', '123', 'admin')
-    """)
-
-    conn.commit()
-    conn.close()
-
-# ------------------ EXECUÇÃO ------------------ #
 if __name__ == "__main__":
-    criar_tabelas()
-    criar_admin()
-    print("Banco criado/atualizado com sucesso!")
+    print(
+        "Este script e legado e nao e usado pelo app atual. "
+        "Use apenas para consulta ou recuperacao manual de dados antigos."
+    )

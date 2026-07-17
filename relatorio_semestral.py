@@ -1,7 +1,6 @@
 import os
 import tempfile
 from datetime import datetime
-from xml.sax.saxutils import escape
 
 import streamlit as st
 import pandas as pd
@@ -22,6 +21,13 @@ from reportlab.lib.enums import TA_CENTER, TA_LEFT
 
 from dados_utils import carregar_todas_cotacoes
 from utils import corrigir_classe
+from relatorio_utils import (
+    formatar_moeda,
+    formatar_numero,
+    formatar_percentual,
+    ordenar_classes,
+    texto_seguro
+)
 
 
 # =========================================================
@@ -41,45 +47,6 @@ AZUL_CABECALHO = "#1F4E79"
 AZUL_GRAFICO = "#2F6F9F"
 VERMELHO_GRAFICO = "#A33D3D"
 CINZA_GRADE = "#DDDDDD"
-
-ORDEM_CLASSES = {
-    "Hortaliças": 1,
-    "Frutas": 2,
-    "Especiarias": 3,
-    "Cereais": 4,
-    "SEM CLASSE": 99
-}
-
-
-# =========================================================
-# FORMATAÇÕES
-# =========================================================
-def formatar_moeda(valor):
-    try:
-        return f"R$ {float(valor):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-    except Exception:
-        return "R$ 0,00"
-
-
-def formatar_numero(valor, casas=0):
-    try:
-        return f"{float(valor):,.{casas}f}".replace(",", "X").replace(".", ",").replace("X", ".")
-    except Exception:
-        return "0"
-
-
-def formatar_percentual(valor):
-    try:
-        return f"{float(valor):.2f}%".replace(".", ",")
-    except Exception:
-        return "0,00%"
-
-
-def texto_seguro(valor):
-    if valor is None:
-        return ""
-    return escape(str(valor))
-
 
 def limitar_texto(valor, limite=34):
     texto = str(valor or "").strip()
@@ -132,25 +99,6 @@ def trimestre_do_semestre(mes, semestre):
         return "1º trimestre" if mes <= 3 else "2º trimestre"
 
     return "3º trimestre" if mes <= 9 else "4º trimestre"
-
-
-def ordenar_classes(df, coluna_classe="classe", coluna_produto="produto"):
-    df = df.copy()
-
-    if coluna_classe in df.columns:
-        df["_ordem_classe"] = df[coluna_classe].map(ORDEM_CLASSES).fillna(99)
-    else:
-        df["_ordem_classe"] = 99
-
-    colunas_ordem = ["_ordem_classe"]
-
-    if coluna_produto in df.columns:
-        colunas_ordem.append(coluna_produto)
-
-    df = df.sort_values(colunas_ordem)
-    df = df.drop(columns=["_ordem_classe"], errors="ignore")
-
-    return df
 
 
 # =========================================================

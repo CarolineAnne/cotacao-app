@@ -1,6 +1,5 @@
 from datetime import datetime, timedelta
 from io import BytesIO
-from xml.sax.saxutils import escape
 
 import streamlit as st
 import pandas as pd
@@ -27,6 +26,14 @@ from reportlab.lib.enums import TA_CENTER, TA_LEFT
 from dados_utils import carregar_todas_cotacoes
 from observacoes_produtos import carregar_observacoes_periodo
 from utils import corrigir_classe
+from relatorio_utils import (
+    classificar_alerta,
+    formatar_moeda,
+    formatar_numero,
+    formatar_percentual,
+    ordenar_classes,
+    texto_seguro
+)
 
 
 # =========================================================
@@ -41,80 +48,6 @@ FONTE_RODAPE = 8
 FONTE_TABELA_PEQUENA = 9.2
 FONTE_TABELA_MEDIA = 8.0
 FONTE_TABELA_GRANDE = 6.8
-
-
-# =========================================================
-# FORMATAÇÕES
-# =========================================================
-def formatar_moeda(valor):
-    try:
-        return f"R$ {float(valor):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-    except Exception:
-        return "R$ 0,00"
-
-
-def formatar_numero(valor, casas=0):
-    try:
-        return f"{float(valor):,.{casas}f}".replace(",", "X").replace(".", ",").replace("X", ".")
-    except Exception:
-        return "0"
-
-
-def formatar_percentual(valor):
-    try:
-        return f"{float(valor):.2f}%".replace(".", ",")
-    except Exception:
-        return "0,00%"
-
-
-def texto_seguro(valor):
-    if valor is None:
-        return ""
-    return escape(str(valor))
-
-
-def classificar_alerta(valor):
-    try:
-        valor = float(valor)
-    except Exception:
-        return "Variação normal"
-
-    if valor >= 60:
-        return "Alta crítica"
-    elif valor >= 30:
-        return "Alta acentuada"
-    elif valor >= 10:
-        return "Alta moderada"
-    elif valor <= -30:
-        return "Queda acentuada"
-    elif valor <= -10:
-        return "Queda relevante"
-    return "Variação normal"
-
-
-def ordenar_classes(df, coluna_classe="classe", coluna_produto="produto"):
-    ordem = {
-        "Hortaliças": 1,
-        "Frutas": 2,
-        "Especiarias": 3,
-        "Cereais": 4,
-        "SEM CLASSE": 99
-    }
-
-    df = df.copy()
-
-    if coluna_classe in df.columns:
-        df["_ordem_classe"] = df[coluna_classe].map(ordem).fillna(99)
-    else:
-        df["_ordem_classe"] = 99
-
-    colunas = ["_ordem_classe"]
-
-    if coluna_produto in df.columns:
-        colunas.append(coluna_produto)
-
-    df = df.sort_values(colunas)
-    return df.drop(columns=["_ordem_classe"], errors="ignore")
 
 
 def obter_periodo_semana(data_ref):
