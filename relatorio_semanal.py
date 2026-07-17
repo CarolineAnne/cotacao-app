@@ -1179,7 +1179,7 @@ def tela_relatorio_semanal(supabase):
 
     st.dataframe(
         destaques_tela,
-        use_container_width=True,
+        width="stretch",
         hide_index=True
     )
 
@@ -1246,7 +1246,7 @@ def tela_relatorio_semanal(supabase):
                 "Valor/kg médio"
             ]
         ],
-        use_container_width=True,
+        width="stretch",
         hide_index=True
     )
 
@@ -1357,7 +1357,7 @@ def tela_relatorio_semanal(supabase):
                     "Variação na semana"
                 ]
             ],
-            use_container_width=True,
+            width="stretch",
             hide_index=True
         )
 
@@ -1387,7 +1387,7 @@ def tela_relatorio_semanal(supabase):
 
     st.dataframe(
         resumo_classe_tela,
-        use_container_width=True,
+        width="stretch",
         hide_index=True
     )
 
@@ -1433,7 +1433,7 @@ def tela_relatorio_semanal(supabase):
                     "Alerta"
                 ]
             ],
-            use_container_width=True,
+            width="stretch",
             hide_index=True
         )
 
@@ -1465,7 +1465,7 @@ def tela_relatorio_semanal(supabase):
 
         st.dataframe(
             tabela_produtos,
-            use_container_width=True,
+            width="stretch",
             hide_index=True
         )
 

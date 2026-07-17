@@ -853,7 +853,7 @@ def tela_importacoes_excel(supabase):
 
                 st.dataframe(
                     formatar_dataframe_importacao_cotacoes(df_preparado.head(50)),
-                    use_container_width=True
+                    width="stretch"
                 )
 
                 if st.button(
@@ -943,7 +943,7 @@ def tela_importacoes_excel(supabase):
 
                 st.dataframe(
                     resumo_abas,
-                    use_container_width=True,
+                    width="stretch",
                     hide_index=True
                 )
 
@@ -966,7 +966,7 @@ def tela_importacoes_excel(supabase):
 
                 st.dataframe(
                     formatar_dataframe_importacao_cotacoes(df_preparado.head(100)),
-                    use_container_width=True
+                    width="stretch"
                 )
 
                 if st.button(
@@ -1032,7 +1032,7 @@ def tela_importacoes_excel(supabase):
 
                 st.dataframe(
                     df_preparado.head(50),
-                    use_container_width=True
+                    width="stretch"
                 )
 
                 if st.button(

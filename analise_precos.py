@@ -159,7 +159,7 @@ def mostrar_legenda_variacao():
     st.markdown("#### 📌 Legenda de classificação das variações")
     st.dataframe(
         legenda,
-        use_container_width=True,
+        width="stretch",
         hide_index=True
     )
 
@@ -1145,7 +1145,7 @@ def tela_analise_precos(supabase):
         "alerta": "Alerta"
     })
 
-    st.dataframe(comparativo_tabela, use_container_width=True)
+    st.dataframe(comparativo_tabela, width="stretch")
 
     # ================= ALERTAS AUTOMÁTICOS =================
     st.divider()
@@ -1238,7 +1238,7 @@ def tela_analise_precos(supabase):
 
         st.dataframe(
             alertas_tabela[colunas_alerta],
-            use_container_width=True
+            width="stretch"
         )
 
         st.warning(
@@ -1494,7 +1494,7 @@ def tela_analise_precos(supabase):
                 ].assign(
                     data=lambda x: x["data"].dt.strftime("%d/%m/%Y")
                 ),
-                use_container_width=True
+                width="stretch"
             )
 
     # ================= MÉDIA MENSAL =================
@@ -1564,7 +1564,7 @@ def tela_analise_precos(supabase):
 
     media_mensal_tabela = media_mensal_tabela[colunas_media_mensal]
 
-    st.dataframe(media_mensal_tabela, use_container_width=True)
+    st.dataframe(media_mensal_tabela, width="stretch")
 
     # ================= VOLUME MENSAL ESTIMADO =================
     st.divider()
@@ -1670,7 +1670,7 @@ def tela_analise_precos(supabase):
             st.markdown("#### Tabela de volume mensal")
             st.dataframe(
                 formatar_volume_para_tela(volume_mensal[colunas_volume_tela]),
-                use_container_width=True,
+                width="stretch",
                 hide_index=True
             )
 
@@ -1732,7 +1732,7 @@ def tela_analise_precos(supabase):
 
             st.dataframe(
                 resumo_classe_tela,
-                use_container_width=True,
+                width="stretch",
                 hide_index=True
             )
 

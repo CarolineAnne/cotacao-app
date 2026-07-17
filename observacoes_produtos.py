@@ -255,5 +255,5 @@ def tela_observacoes_produtos(supabase):
 
     st.dataframe(
         df_obs[colunas_existentes],
-        use_container_width=True
+        width="stretch"
     )

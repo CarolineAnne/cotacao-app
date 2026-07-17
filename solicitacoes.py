@@ -124,7 +124,7 @@ def tela_solicitacoes(supabase, nivel, registrar_acao_func=None):
             else:
                 st.dataframe(
                     tipos_df,
-                    use_container_width=True,
+                    width="stretch",
                     hide_index=True
                 )
 
@@ -258,7 +258,7 @@ def tela_solicitacoes(supabase, nivel, registrar_acao_func=None):
 
             st.dataframe(
                 df_tabela,
-                use_container_width=True,
+                width="stretch",
                 hide_index=True
             )
 

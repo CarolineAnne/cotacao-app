@@ -838,7 +838,7 @@ def tela_relatorio_diario(supabase):
 
     st.dataframe(
         destaques_tela,
-        use_container_width=True,
+        width="stretch",
         hide_index=True
     )
 
@@ -858,7 +858,7 @@ def tela_relatorio_diario(supabase):
 
     st.dataframe(
         resumo_classe_tela,
-        use_container_width=True,
+        width="stretch",
         hide_index=True
     )
 
@@ -893,7 +893,7 @@ def tela_relatorio_diario(supabase):
 
         st.dataframe(
             alertas_tela[colunas_alerta],
-            use_container_width=True,
+            width="stretch",
             hide_index=True
         )
 

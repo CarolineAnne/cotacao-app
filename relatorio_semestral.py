@@ -1502,7 +1502,7 @@ def tela_relatorio_semestral(supabase):
         st.dataframe(
             pd.DataFrame(tabela_ranking_variacao(dados["ranking_altas"])[1:],
                          columns=tabela_ranking_variacao(dados["ranking_altas"])[0]),
-            use_container_width=True,
+            width="stretch",
             hide_index=True
         )
 
@@ -1512,7 +1512,7 @@ def tela_relatorio_semestral(supabase):
         st.dataframe(
             pd.DataFrame(tabela_ranking_variacao(dados["ranking_quedas"])[1:],
                          columns=tabela_ranking_variacao(dados["ranking_quedas"])[0]),
-            use_container_width=True,
+            width="stretch",
             hide_index=True
         )
 

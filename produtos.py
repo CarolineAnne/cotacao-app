@@ -157,7 +157,7 @@ def tela_cadastro_produtos(supabase, registrar_acao_func=None):
 
             st.dataframe(
                 df,
-                use_container_width=True,
+                width="stretch",
                 hide_index=True
             )
 

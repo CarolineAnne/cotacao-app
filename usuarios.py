@@ -160,7 +160,7 @@ def tela_cadastro_usuarios(supabase, registrar_acao_func=None):
 
             st.dataframe(
                 df_exibir,
-                use_container_width=True,
+                width="stretch",
                 hide_index=True
             )
 

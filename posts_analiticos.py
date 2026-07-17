@@ -916,7 +916,7 @@ def tela_posts_analiticos(supabase):
             )
 
             st.success("Post gerado com sucesso.")
-            st.image(caminho_png, caption="Prévia do post analítico", use_container_width=True)
+            st.image(caminho_png, caption="Prévia do post analítico", width="stretch")
 
             with open(caminho_png, "rb") as f:
                 st.download_button(

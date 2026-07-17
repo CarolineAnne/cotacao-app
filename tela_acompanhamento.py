@@ -82,7 +82,7 @@ def tela_acompanhamento(supabase):
 
     st.dataframe(
         df_tabela[colunas_existentes],
-        use_container_width=True
+        width="stretch"
     )
 
     st.divider()

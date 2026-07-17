@@ -164,7 +164,7 @@ def tela_post_produto_unitario(supabase):
         foto_url = info_produto.get("foto_url", "")
 
         if foto_url:
-            st.image(foto_url, caption=produto_nome, use_container_width=True)
+            st.image(foto_url, caption=produto_nome, width="stretch")
         else:
             st.warning("Produto sem foto cadastrada.")
 
@@ -303,7 +303,7 @@ def tela_post_produto_unitario(supabase):
             st.success("Dois posts gerados com sucesso.")
 
             st.subheader("Post 1 - Cotação e comportamento de preços")
-            st.image(post_1_png, caption="Post 1 - Cotação", use_container_width=True)
+            st.image(post_1_png, caption="Post 1 - Cotação", width="stretch")
 
             st.download_button(
                 "⬇️ Baixar Post 1 - Cotação",
@@ -313,7 +313,7 @@ def tela_post_produto_unitario(supabase):
             )
 
             st.subheader("Post 2 - Informações do produto")
-            st.image(post_2_png, caption="Post 2 - Informações", use_container_width=True)
+            st.image(post_2_png, caption="Post 2 - Informações", width="stretch")
 
             st.download_button(
                 "⬇️ Baixar Post 2 - Informações",

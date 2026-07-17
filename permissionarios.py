@@ -902,7 +902,7 @@ def aba_cadastro_permissionario(supabase, registrar_acao):
 
     st.dataframe(
         df_perm[colunas],
-        use_container_width=True,
+        width="stretch",
         hide_index=True
     )
 
@@ -1515,7 +1515,7 @@ def aba_envio_manual(supabase):
                     st.link_button(
                         "Abrir WhatsApp",
                         wa_link,
-                        use_container_width=True
+                        width="stretch"
                     )
 
                 with col_marcar:
@@ -1524,13 +1524,13 @@ def aba_envio_manual(supabase):
                             "Enviado",
                             key=f"manual_enviado_{permissionario_id}",
                             disabled=True,
-                            use_container_width=True
+                            width="stretch"
                         )
                     else:
                         if st.button(
                             "Marcar enviado",
                             key=f"marcar_manual_{permissionario_id}",
-                            use_container_width=True
+                            width="stretch"
                         ):
                             registrar_disparo(
                                 supabase=supabase,
@@ -1585,7 +1585,7 @@ def aba_respostas_admin(supabase):
 
     st.dataframe(
         df_mostrar,
-        use_container_width=True,
+        width="stretch",
         hide_index=True
     )
 
@@ -2148,7 +2148,7 @@ def tela_respostas_permissionarios(supabase, mostrar_titulo=True):
 
             st.dataframe(
                 df_mostrar[colunas_existentes],
-                use_container_width=True
+                width="stretch"
             )
 
     # ================= FOTOS =================

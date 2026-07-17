@@ -1403,7 +1403,7 @@ def tela_post_destaques_dia(supabase):
             formatar_tabela_top3_tela(
                 tabela_top3
             ),
-            use_container_width=True,
+            width="stretch",
             hide_index=True
         )
 
@@ -1457,7 +1457,7 @@ def tela_post_destaques_dia(supabase):
                     "Prévia do post "
                     "Destaques do Dia"
                 ),
-                use_container_width=True
+                width="stretch"
             )
 
             nome_arquivo = (

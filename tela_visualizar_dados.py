@@ -99,7 +99,7 @@ def tela_visualizar_dados(supabase):
                     lambda x: f"{x:.2f}".replace(".", ",") if pd.notnull(x) else ""
                 )
 
-        st.dataframe(df_tabela, use_container_width=True)
+        st.dataframe(df_tabela, width="stretch")
 
     gerar_pdf_click = st.button("📄 Gerar PDF")
 
