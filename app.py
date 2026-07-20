@@ -38,6 +38,38 @@ from permissionarios import (
 )
 # ====================================================
 
+PERMISSOES_POR_TELA = {
+    "Cadastro de Usuários": {"admin"},
+    "Cadastro de Produtos": {"admin"},
+    "Permissionários": {"admin"},
+    "Importações por Excel": {"admin"},
+    "Relatório Diário": {"admin"},
+    "Relatório Semanal": {"admin"},
+    "Acompanhamento": {"admin"},
+    "Cotação do Dia": {"admin", "cotacao"},
+    "Envio de Links": {"admin", "cotacao"},
+    "Respostas dos Permissionários": {"admin", "cotacao"},
+    "Análise de Preços": {"admin", "cotacao"},
+    "Post Destaques do Dia": {"admin", "cotacao"},
+    "Relatório Semestral": {"admin", "cotacao"},
+    "Posts Analíticos": {"admin", "cotacao"},
+    "Post Unitário do Produto": {"admin", "cotacao"},
+    "Informações dos Produtos": {"admin", "cotacao"},
+    "Observações de Produtos": {"admin", "cotacao"},
+    "Solicitações": {"admin", "cotacao", "requisitante"},
+    "Visualizar Dados": {"admin", "cotacao", "requisitante"},
+    "Sobre os Produtos": {"admin", "cotacao", "requisitante"},
+}
+
+
+def usuario_pode_acessar_tela(nivel, tela):
+    niveis_permitidos = PERMISSOES_POR_TELA.get(tela)
+
+    if not niveis_permitidos:
+        return True
+
+    return nivel in niveis_permitidos
+
 # ================== CONFIG ==========================
 st.set_page_config(
     page_title="Sistema de Cotação",
@@ -338,6 +370,10 @@ if st.session_state.logado:
             key="btn_sair_sidebar",
             on_click=sair_sistema
         )
+
+    if not usuario_pode_acessar_tela(nivel, opcao):
+        st.error("Acesso restrito.")
+        st.stop()
 
     # ================= FUNDO DA TELA INICIAL =================
     if opcao == "Início":
