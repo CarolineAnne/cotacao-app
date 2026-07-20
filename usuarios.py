@@ -5,6 +5,7 @@ from auth_utils import gerar_hash_senha, senha_esta_com_hash
 
 
 NIVEIS_USUARIO = ["admin", "cotacao", "requisitante"]
+TAMANHO_MINIMO_SENHA = 8
 
 
 def indice_seguro(lista, valor, padrao=0):
@@ -106,8 +107,10 @@ def tela_cadastro_usuarios(supabase, registrar_acao_func=None):
                 st.warning("Informe o usuário de acesso.")
             elif not senha_limpa:
                 st.warning("Informe uma senha.")
-            elif len(senha_limpa) < 4:
-                st.warning("A senha precisa ter pelo menos 4 caracteres.")
+            elif len(senha_limpa) < TAMANHO_MINIMO_SENHA:
+                st.warning(
+                    f"A senha precisa ter pelo menos {TAMANHO_MINIMO_SENHA} caracteres."
+                )
             elif usuario_existe(supabase, usuario_limpo):
                 st.error("Já existe um usuário cadastrado com esse login.")
             else:
@@ -240,8 +243,10 @@ def tela_cadastro_usuarios(supabase, registrar_acao_func=None):
                     st.warning("Informe o usuário de acesso.")
                 elif usuario_existe(supabase, usuario_limpo, ignorar_id=id_usuario):
                     st.error("Já existe outro usuário com esse login.")
-                elif senha_nova_limpa and len(senha_nova_limpa) < 4:
-                    st.warning("A nova senha precisa ter pelo menos 4 caracteres.")
+                elif senha_nova_limpa and len(senha_nova_limpa) < TAMANHO_MINIMO_SENHA:
+                    st.warning(
+                        f"A nova senha precisa ter pelo menos {TAMANHO_MINIMO_SENHA} caracteres."
+                    )
                 else:
                     try:
                         dados_update = {
