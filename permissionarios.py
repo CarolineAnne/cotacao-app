@@ -399,6 +399,21 @@ def carregar_respostas_permissionarios(supabase, data_str):
         return pd.DataFrame()
     
 BUCKET_FOTOS = "fotos-produtos"
+EXTENSOES_FOTOS_PERMITIDAS = {"jpg", "jpeg", "png", "webp"}
+CONTENT_TYPES_FOTOS_PERMITIDOS = {
+    "image/jpeg",
+    "image/jpg",
+    "image/png",
+    "image/webp",
+}
+CONTENT_TYPE_POR_EXTENSAO = {
+    "jpg": "image/jpeg",
+    "jpeg": "image/jpeg",
+    "png": "image/png",
+    "webp": "image/webp",
+}
+TAMANHO_MAXIMO_FOTO_MB = 5
+TAMANHO_MAXIMO_FOTO_BYTES = TAMANHO_MAXIMO_FOTO_MB * 1024 * 1024
 
 def limpar_nome_arquivo(texto):
     texto = str(texto).lower().strip()
@@ -425,12 +440,58 @@ def limpar_nome_arquivo(texto):
 
     return texto[:60]
 
-def salvar_foto_permissionario(supabase, arquivo, permissionario_id, data_link, produto):
-    nome_original = str(arquivo.name)
-    extensao = nome_original.split(".")[-1].lower()
 
-    if extensao not in ["jpg", "jpeg", "png", "webp"]:
-        extensao = "jpg"
+def conteudo_tem_assinatura_imagem(conteudo, extensao):
+    if extensao in {"jpg", "jpeg"}:
+        return conteudo.startswith(b"\xff\xd8\xff")
+
+    if extensao == "png":
+        return conteudo.startswith(b"\x89PNG\r\n\x1a\n")
+
+    if extensao == "webp":
+        return (
+            len(conteudo) >= 12
+            and conteudo[:4] == b"RIFF"
+            and conteudo[8:12] == b"WEBP"
+        )
+
+    return False
+
+
+def validar_foto_permissionario(arquivo):
+    nome_original = str(getattr(arquivo, "name", "") or "")
+    extensao = (
+        nome_original.rsplit(".", 1)[-1].lower()
+        if "." in nome_original
+        else ""
+    )
+
+    if extensao not in EXTENSOES_FOTOS_PERMITIDAS:
+        raise ValueError("Formato de foto não permitido. Use JPG, PNG ou WEBP.")
+
+    content_type = str(getattr(arquivo, "type", "") or "").lower().strip()
+
+    if content_type and content_type not in CONTENT_TYPES_FOTOS_PERMITIDOS:
+        raise ValueError("Tipo da foto não permitido. Use JPG, PNG ou WEBP.")
+
+    conteudo = arquivo.getvalue()
+
+    if not conteudo:
+        raise ValueError("A foto enviada está vazia.")
+
+    if len(conteudo) > TAMANHO_MAXIMO_FOTO_BYTES:
+        raise ValueError(
+            f"A foto deve ter no máximo {TAMANHO_MAXIMO_FOTO_MB} MB."
+        )
+
+    if not conteudo_tem_assinatura_imagem(conteudo, extensao):
+        raise ValueError("O arquivo enviado não parece ser uma imagem válida.")
+
+    return extensao, CONTENT_TYPE_POR_EXTENSAO[extensao], conteudo
+
+
+def salvar_foto_permissionario(supabase, arquivo, permissionario_id, data_link, produto):
+    extensao, content_type, conteudo = validar_foto_permissionario(arquivo)
 
     produto_limpo = limpar_nome_arquivo(produto)
 
@@ -439,11 +500,9 @@ def salvar_foto_permissionario(supabase, arquivo, permissionario_id, data_link, 
         f"{produto_limpo}_{uuid.uuid4().hex}.{extensao}"
     )
 
-    content_type = arquivo.type or f"image/{extensao}"
-
     supabase.storage.from_(BUCKET_FOTOS).upload(
         nome_arquivo,
-        arquivo.getvalue(),
+        conteudo,
         {
             "content-type": content_type,
             "upsert": "true"
@@ -678,6 +737,10 @@ def tela_publica_permissionario(supabase, token):
                     f"Fotos de {produto}",
                     type=["jpg", "jpeg", "png", "webp"],
                     accept_multiple_files=True,
+                    help=(
+                        f"Envie JPG, PNG ou WEBP com até "
+                        f"{TAMANHO_MAXIMO_FOTO_MB} MB por foto."
+                    ),
                     key=(
                         f"fotos_publico_"
                         f"{permissionario_id}_{produto}"
@@ -733,6 +796,13 @@ def tela_publica_permissionario(supabase, token):
                         "Preencha pelo menos um preço ou envie uma foto "
                         "antes de concluir."
                     )
+                    return
+
+                try:
+                    for item in fotos_para_salvar:
+                        validar_foto_permissionario(item["arquivo"])
+                except ValueError as erro:
+                    st.warning(str(erro))
                     return
 
                 (
