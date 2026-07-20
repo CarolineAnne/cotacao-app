@@ -98,6 +98,16 @@ Antes de usar `--send`, confirme que a URL pública do sistema, o template aprov
 
 Para links de permissionários, use somente URL pública com `https://`. O sistema bloqueia `http://` para evitar envio de token por conexão insegura.
 
+## Segurança aplicada
+
+- Senhas salvas com hash protegido e migração automática de senhas antigas.
+- Bloqueio temporário após tentativas repetidas de login inválido.
+- Permissões centralizadas por tela para os níveis `admin`, `cotacao` e `requisitante`.
+- Upload de fotos limitado a JPG, PNG e WEBP, com validação de tamanho e conteúdo.
+- Links públicos de permissionários obrigatoriamente com `https://`.
+- Dependências principais travadas no `requirements.txt`.
+- Arquivos sensíveis locais ignorados pelo Git.
+
 ## Testes
 
 Os testes usam `unittest`, que já vem com Python. Para executar:
