@@ -2,9 +2,56 @@ import hashlib
 import hmac
 import secrets
 
+from datetime import datetime, timedelta
+
 
 HASH_PREFIX = "pbkdf2_sha256"
 ITERACOES_PADRAO = 260000
+MAX_TENTATIVAS_LOGIN = 5
+TEMPO_BLOQUEIO_LOGIN_SEGUNDOS = 5 * 60
+CHAVE_TENTATIVAS_LOGIN = "login_tentativas_falhas"
+CHAVE_BLOQUEIO_LOGIN = "login_bloqueado_ate"
+
+
+def segundos_bloqueio_login(estado, agora=None):
+    agora = agora or datetime.now()
+    bloqueado_ate = estado.get(CHAVE_BLOQUEIO_LOGIN)
+
+    if not bloqueado_ate:
+        return 0
+
+    restante = int((bloqueado_ate - agora).total_seconds())
+
+    if restante <= 0:
+        limpar_tentativas_login(estado)
+        return 0
+
+    return restante
+
+
+def registrar_falha_login(estado, agora=None):
+    agora = agora or datetime.now()
+
+    bloqueio_restante = segundos_bloqueio_login(estado, agora)
+
+    if bloqueio_restante > 0:
+        return bloqueio_restante
+
+    tentativas = int(estado.get(CHAVE_TENTATIVAS_LOGIN, 0) or 0) + 1
+    estado[CHAVE_TENTATIVAS_LOGIN] = tentativas
+
+    if tentativas >= MAX_TENTATIVAS_LOGIN:
+        estado[CHAVE_BLOQUEIO_LOGIN] = (
+            agora + timedelta(seconds=TEMPO_BLOQUEIO_LOGIN_SEGUNDOS)
+        )
+        return TEMPO_BLOQUEIO_LOGIN_SEGUNDOS
+
+    return 0
+
+
+def limpar_tentativas_login(estado):
+    estado[CHAVE_TENTATIVAS_LOGIN] = 0
+    estado[CHAVE_BLOQUEIO_LOGIN] = None
 
 
 def gerar_hash_senha(senha, iteracoes=ITERACOES_PADRAO):

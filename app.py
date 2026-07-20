@@ -26,7 +26,13 @@ from relatorio_semanal import tela_relatorio_semanal
 from relatorio_semestral import tela_relatorio_semestral
 from post_destaques_dia import tela_post_destaques_dia
 from solicitacoes import tela_solicitacoes
-from auth_utils import verificar_login_seguro
+from auth_utils import (
+    MAX_TENTATIVAS_LOGIN,
+    limpar_tentativas_login,
+    registrar_falha_login,
+    segundos_bloqueio_login,
+    verificar_login_seguro
+)
 from usuarios import tela_cadastro_usuarios
 from produtos import tela_cadastro_produtos
 
@@ -174,17 +180,31 @@ if not st.session_state.logado:
     )
 
     # ---------- FORMULÁRIO ----------
+    segundos_bloqueio = segundos_bloqueio_login(st.session_state)
+    login_bloqueado = segundos_bloqueio > 0
+
+    if login_bloqueado:
+        minutos_bloqueio = max(1, (segundos_bloqueio + 59) // 60)
+        st.warning(
+            "Muitas tentativas inválidas. "
+            f"Tente novamente em {minutos_bloqueio} minuto(s)."
+        )
+
     with st.form("form_login"):
         usuario = st.text_input("Usuário")
         senha = st.text_input("Senha", type="password")
 
-        entrar = st.form_submit_button("Entrar")
+        entrar = st.form_submit_button(
+            "Entrar",
+            disabled=login_bloqueado
+        )
 
-        if entrar:
+        if entrar and not login_bloqueado:
 
             resultado = verificar_login_seguro(supabase, usuario, senha)
 
             if resultado:
+                limpar_tentativas_login(st.session_state)
                 st.session_state.logado = True
                 st.session_state.nome = resultado["nome"]
                 st.session_state.nivel = resultado["nivel"]
@@ -192,7 +212,27 @@ if not st.session_state.logado:
                 st.rerun()
 
             else:
+                bloqueio_restante = registrar_falha_login(st.session_state)
                 st.error("Usuário ou senha inválidos.")
+
+                if bloqueio_restante > 0:
+                    st.warning(
+                        "Limite de tentativas atingido. "
+                        "Aguarde 5 minutos para tentar novamente."
+                    )
+                else:
+                    tentativas = int(
+                        st.session_state.get(
+                            "login_tentativas_falhas",
+                            0
+                        ) or 0
+                    )
+                    restantes = max(0, MAX_TENTATIVAS_LOGIN - tentativas)
+
+                    if restantes <= 2:
+                        st.warning(
+                            f"Tentativas restantes: {restantes}."
+                        )
 
     # ---------- INFORMAÇÃO EXTRA ----------
     st.markdown(
