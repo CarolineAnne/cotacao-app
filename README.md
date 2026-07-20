@@ -60,6 +60,34 @@ streamlit run app.py
 
 O Streamlit mostrará o endereço local para abrir no navegador.
 
+## Automação opcional de WhatsApp
+
+O envio automático de links para permissionários fica no arquivo `automacao_whatsapp.py`.
+Por segurança, ele roda em modo de simulação por padrão e não envia mensagens sem a opção `--send`.
+
+Crie um arquivo `.env` local com as variáveis abaixo, sem enviar esse arquivo para o Git:
+
+```env
+SUPABASE_URL=https://seu-projeto.supabase.co
+SUPABASE_KEY=sua-chave-do-supabase
+WHATSAPP_TOKEN=seu-token-da-api
+WHATSAPP_PHONE_NUMBER_ID=seu-phone-number-id
+WHATSAPP_API_VERSION=v21.0
+WHATSAPP_TEMPLATE_NAME=link_cotacao_diaria
+WHATSAPP_TEMPLATE_LANGUAGE=pt_BR
+```
+
+Comandos úteis:
+
+```powershell
+venv\Scripts\python.exe automacao_whatsapp.py --check
+venv\Scripts\python.exe automacao_whatsapp.py --once --dry-run
+venv\Scripts\python.exe automacao_whatsapp.py --once --send
+venv\Scripts\python.exe automacao_whatsapp.py --schedule --send
+```
+
+Antes de usar `--send`, confirme que a URL pública do sistema, o template aprovado no WhatsApp e a configuração `ativo` dos permissionários estão corretos.
+
 ## Testes
 
 Os testes usam `unittest`, que já vem com Python. Para executar:
@@ -79,6 +107,7 @@ venv\Scripts\python.exe -m unittest discover -s tests -v
 - `relatorio_utils.py`: funções comuns de formatação e ordenação dos relatórios.
 - `relatorio_diario.py`, `relatorio_semanal.py`, `relatorio_semestral.py`: geração e telas dos relatórios.
 - `permissionarios.py`: cadastro, links públicos, respostas e fotos de permissionários.
+- `automacao_whatsapp.py`: automação opcional para envio de links via WhatsApp Cloud API.
 - `produtos.py`, `usuarios.py`, `solicitacoes.py`: telas administrativas e operacionais.
 - `tela_acompanhamento.py`: consulta e exportação dos registros de atividade do sistema.
 - `tela_cotacao_dia.py`: formulário e salvamento da cotação diária.
