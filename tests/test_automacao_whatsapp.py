@@ -1,9 +1,11 @@
 import unittest
 
 from datetime import datetime
+from unittest.mock import patch
 
 from automacao_whatsapp import (
     TZ,
+    carregar_config_ambiente,
     limpar_whatsapp,
     montar_link,
     montar_payload_whatsapp,
@@ -23,6 +25,23 @@ class AutomacaoWhatsappTest(unittest.TestCase):
         self.assertEqual(limpar_whatsapp("(74) 99999-8888"), "5574999998888")
         self.assertEqual(limpar_whatsapp("5574999998888"), "5574999998888")
         self.assertIsNone(limpar_whatsapp(""))
+
+    def test_config_ambiente_informa_supabase_faltando(self):
+        with patch("automacao_whatsapp.load_dotenv", return_value=True):
+            with patch.dict("os.environ", {}, clear=True):
+                with self.assertRaisesRegex(ValueError, "SUPABASE_URL"):
+                    carregar_config_ambiente()
+
+    def test_config_ambiente_informa_whatsapp_faltando_no_envio_real(self):
+        env = {
+            "SUPABASE_URL": "https://exemplo.supabase.co",
+            "SUPABASE_KEY": "chave",
+        }
+
+        with patch("automacao_whatsapp.load_dotenv", return_value=True):
+            with patch.dict("os.environ", env, clear=True):
+                with self.assertRaisesRegex(ValueError, "WHATSAPP_TOKEN"):
+                    carregar_config_ambiente(dry_run=False)
 
     def test_valida_janela_de_envio(self):
         config = {

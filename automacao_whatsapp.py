@@ -20,6 +20,11 @@ MENSAGEM_PADRAO = (
     "Bom dia! Por favor, informe os preços dos produtos solicitados "
     "para a cotação de hoje."
 )
+VARIAVEIS_SUPABASE_OBRIGATORIAS = ("SUPABASE_URL", "SUPABASE_KEY")
+VARIAVEIS_WHATSAPP_ENVIO_REAL = (
+    "WHATSAPP_TOKEN",
+    "WHATSAPP_PHONE_NUMBER_ID",
+)
 
 
 def agora_brasil():
@@ -57,6 +62,22 @@ def limpar_whatsapp(numero):
     return numero_limpo
 
 
+def variaveis_faltando(config, nomes):
+    return [
+        nome
+        for nome in nomes
+        if not str(config.get(nome.lower()) or "").strip()
+    ]
+
+
+def mensagem_env_incompleto(variaveis, contexto):
+    nomes = ", ".join(variaveis)
+    return (
+        f"{contexto} Informe {nomes} no arquivo .env. "
+        "Use o modelo do README e não envie esse arquivo ao Git."
+    )
+
+
 def carregar_config_ambiente(dry_run=True):
     load_dotenv()
 
@@ -76,14 +97,31 @@ def carregar_config_ambiente(dry_run=True):
         ),
     }
 
-    if not config["supabase_url"] or not config["supabase_key"]:
-        raise ValueError("Configure SUPABASE_URL e SUPABASE_KEY no arquivo .env.")
+    faltando_supabase = variaveis_faltando(
+        config,
+        VARIAVEIS_SUPABASE_OBRIGATORIAS
+    )
+
+    if faltando_supabase:
+        raise ValueError(
+            mensagem_env_incompleto(
+                faltando_supabase,
+                "Configuração local incompleta."
+            )
+        )
 
     if not dry_run:
-        if not config["whatsapp_token"] or not config["whatsapp_phone_number_id"]:
+        faltando_whatsapp = variaveis_faltando(
+            config,
+            VARIAVEIS_WHATSAPP_ENVIO_REAL
+        )
+
+        if faltando_whatsapp:
             raise ValueError(
-                "Configure WHATSAPP_TOKEN e WHATSAPP_PHONE_NUMBER_ID no arquivo .env "
-                "para permitir envio real."
+                mensagem_env_incompleto(
+                    faltando_whatsapp,
+                    "Envio real bloqueado."
+                )
             )
 
     return config
@@ -505,13 +543,30 @@ def verificar_configuracao(supabase, dry_run):
 
     if not config:
         print("Configuração de permissionários não encontrada no Supabase.")
+        print(
+            "Abra a tela Permissionários > Mensagem e link e salve a configuração inicial."
+        )
         return
 
+    automacao_ativa = bool(config.get("ativo", False))
+    base_url = str(config.get("base_url") or "").strip()
+
     print("Configuração de permissionários encontrada.")
-    print(f"Automação ativa: {bool(config.get('ativo', False))}")
-    print(f"URL base configurada: {bool(str(config.get('base_url') or '').strip())}")
+    print(f"Automação ativa: {automacao_ativa}")
+    print(f"URL base configurada: {bool(base_url)}")
     print(f"Hora de envio: {normalizar_hora(config.get('hora_envio'))}")
     print(f"Hora limite: {normalizar_hora(config.get('hora_limite'), '09:00')}")
+
+    if not automacao_ativa:
+        print("Aviso: a automação está desativada no Supabase.")
+
+    if not base_url:
+        print("Aviso: configure a URL pública do sistema com https://.")
+    else:
+        try:
+            normalizar_base_url_publica(base_url)
+        except ValueError as erro:
+            print(f"Aviso: {erro}")
 
 
 def criar_parser():
