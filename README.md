@@ -52,10 +52,18 @@ Importante: não envie `.env`, `.env.*` nem `.streamlit/secrets.toml` para o Git
 
 ## Como rodar
 
-Com o ambiente virtual ativo, execute:
+No Windows, você pode abrir o sistema dando dois cliques em:
+
+```text
+abrir_sistema.bat
+```
+
+Esse arquivo usa o Python do `venv` do projeto, evitando erro de pacote ausente como `ModuleNotFoundError`.
+
+Se preferir rodar manualmente, execute:
 
 ```powershell
-streamlit run app.py
+venv\Scripts\python.exe -m streamlit run app.py
 ```
 
 O Streamlit mostrará o endereço local para abrir no navegador.
