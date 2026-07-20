@@ -96,6 +96,8 @@ venv\Scripts\python.exe automacao_whatsapp.py --schedule --send
 
 Antes de usar `--send`, confirme que a URL pública do sistema, o template aprovado no WhatsApp e a configuração `ativo` dos permissionários estão corretos.
 
+Para links de permissionários, use somente URL pública com `https://`. O sistema bloqueia `http://` para evitar envio de token por conexão insegura.
+
 ## Testes
 
 Os testes usam `unittest`, que já vem com Python. Para executar:

@@ -12,6 +12,8 @@ from apscheduler.schedulers.blocking import BlockingScheduler
 from dotenv import load_dotenv
 from supabase import create_client
 
+from url_utils import normalizar_base_url_publica
+
 
 TZ = ZoneInfo("America/Bahia")
 MENSAGEM_PADRAO = (
@@ -138,16 +140,14 @@ def montar_validade_link(config, data_referencia=None):
 
 
 def montar_link(base_url, token):
-    return f"{str(base_url).strip().rstrip('/')}?token={token}"
+    base_url = normalizar_base_url_publica(base_url)
+    return f"{base_url}?token={token}"
 
 
 def gerar_ou_atualizar_link(supabase, permissionario_id, config):
     data_hoje = data_hoje_brasil().isoformat()
     valido_ate = montar_validade_link(config)
-    base_url = str(config.get("base_url") or "").strip().rstrip("/")
-
-    if not base_url:
-        raise ValueError("A URL base do sistema não está configurada.")
+    base_url = normalizar_base_url_publica(config.get("base_url"))
 
     resp_link = (
         supabase

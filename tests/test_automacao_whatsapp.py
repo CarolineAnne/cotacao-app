@@ -71,6 +71,10 @@ class AutomacaoWhatsappTest(unittest.TestCase):
             "https://exemplo.com?token=abc123"
         )
 
+    def test_monta_link_recusa_http(self):
+        with self.assertRaises(ValueError):
+            montar_link("http://exemplo.com", "abc123")
+
     def test_monta_payload_do_template(self):
         payload = montar_payload_whatsapp(
             telefone="5574999998888",

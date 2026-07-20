@@ -20,6 +20,7 @@ from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4, landscape
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.enums import TA_CENTER, TA_LEFT
+from url_utils import normalizar_base_url_publica
 
 TZ = ZoneInfo("America/Bahia")
 
@@ -114,7 +115,7 @@ def atualizar_config(
         "hora_limite": str(hora_limite),
         "mensagem": mensagem.strip(),
         "mensagem_agradecimento": mensagem_agradecimento.strip(),
-        "base_url": base_url.strip().rstrip("/"),
+        "base_url": normalizar_base_url_publica(base_url),
         "ativo": bool(ativo),
         "template_nome": template_nome.strip(),
         "idioma": idioma.strip(),
@@ -205,14 +206,7 @@ def gerar_ou_atualizar_link(supabase, permissionario_id, config):
     data_cotacao = hoje_brasil().isoformat()
     valido_ate = montar_validade_link(config)
 
-    base_url = str(
-        config.get("base_url") or ""
-    ).strip().rstrip("/")
-
-    if not base_url:
-        raise ValueError(
-            "A URL do sistema publicado não foi configurada."
-        )
+    base_url = normalizar_base_url_publica(config.get("base_url"))
 
     resposta = (
         supabase
@@ -1345,9 +1339,9 @@ def aba_mensagem_link(supabase, registrar_acao):
             st.error("Informe a mensagem de agradecimento.")
         elif not base_url_limpa:
             st.error("Informe a URL do sistema publicado.")
-        elif not base_url_limpa.startswith(("http://", "https://")):
+        elif not base_url_limpa.lower().startswith("https://"):
             st.error(
-                "A URL deve começar com http:// ou https://."
+                "A URL deve começar com https://."
             )
         else:
             try:
