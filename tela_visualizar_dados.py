@@ -150,24 +150,22 @@ def tela_visualizar_dados(supabase):
         data_final_sql = data_final.strftime("%Y-%m-%d")
 
         try:
-            resp = (
-                supabase
-                .table("cotacoes")
-                .select("id, data, classe, produto, unidade, kg, preco_min, preco_max, preco_medio, valor_kg")
-                .gte("data", data_inicial_sql)
-                .lte("data", data_final_sql)
-                .order("data")
-                .order("produto")
-                .execute()
-            )
-
-            df = pd.DataFrame(resp.data or [])
+            df = carregar_todas_cotacoes(supabase)
 
         except Exception as e:
             st.error(f"Erro ao carregar dados: {e}")
             st.stop()
 
         df = preparar_dataframe_cotacoes(df)
+
+        if not df.empty:
+            data_inicial_ts = pd.to_datetime(data_inicial)
+            data_final_ts = pd.to_datetime(data_final) + pd.Timedelta(days=1)
+
+            df = df[
+                (df["data"] >= data_inicial_ts) &
+                (df["data"] < data_final_ts)
+            ].copy()
 
         with col3:
             classe = st.selectbox(
