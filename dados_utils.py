@@ -3,6 +3,8 @@ import pandas as pd
 
 from datetime import datetime
 
+from auth_utils import verificar_login_seguro
+
 
 @st.cache_data(ttl=60)
 def carregar_produtos(_supabase):
@@ -76,19 +78,10 @@ def contar_solicitacoes_pendentes(supabase):
 
 
 def verificar_login(supabase, usuario, senha):
-    resposta = (
-        supabase
-        .table("usuarios")
-        .select("nome, nivel")
-        .eq("usuario", usuario)
-        .eq("senha", senha)
-        .execute()
-    )
-
-    if resposta.data:
-        return resposta.data[0]
-
-    return None
+    """
+    Mantem compatibilidade com chamadas antigas usando o fluxo seguro.
+    """
+    return verificar_login_seguro(supabase, usuario, senha)
 
 
 def registrar_acao(supabase, acao, tela="", detalhes="", arquivo_url=""):
