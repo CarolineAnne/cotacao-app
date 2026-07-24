@@ -41,6 +41,12 @@ def gerar_pdf_para_download(df):
             os.remove(caminho_pdf)
 
 
+def gerar_excel_para_download(df):
+    buffer = io.BytesIO()
+    df.to_excel(buffer, index=False, engine="openpyxl")
+    return buffer.getvalue()
+
+
 def preparar_dataframe_cotacoes(df):
     df = df.copy()
 
@@ -132,6 +138,23 @@ def formatar_tabela_exibicao(df, mostrar_data=False):
     return df_tabela
 
 
+def preparar_exportacao_completa(df):
+    df_exportar = df.copy()
+
+    if df_exportar.empty:
+        return df_exportar
+
+    df_exportar = aplicar_ordenacao(df_exportar)
+
+    if "data" in df_exportar.columns:
+        df_exportar["data"] = pd.to_datetime(
+            df_exportar["data"],
+            errors="coerce"
+        ).dt.strftime("%d/%m/%Y")
+
+    return df_exportar
+
+
 def tela_visualizar_dados(supabase):
     st.title("📋 Cotações")
 
@@ -165,17 +188,15 @@ def tela_visualizar_dados(supabase):
             st.warning("A data inicial não pode ser maior que a data final.")
             return
 
-        data_inicial_sql = data_inicial.strftime("%Y-%m-%d")
-        data_final_sql = data_final.strftime("%Y-%m-%d")
-
         try:
-            df = carregar_todas_cotacoes(supabase)
+            df_todas_cotacoes = carregar_todas_cotacoes(supabase)
 
         except Exception as e:
             st.error(f"Erro ao carregar dados: {e}")
             st.stop()
 
-        df = preparar_dataframe_cotacoes(df)
+        df_todas_cotacoes = preparar_dataframe_cotacoes(df_todas_cotacoes)
+        df = df_todas_cotacoes.copy()
 
         if not df.empty:
             data_inicial_ts = pd.to_datetime(data_inicial)
@@ -334,57 +355,30 @@ def tela_visualizar_dados(supabase):
 
         try:
             if not df_tabela.empty:
-                buffer = io.BytesIO()
-                df_tabela.to_excel(buffer, index=False, engine="openpyxl")
-                buffer.seek(0)
+                excel_filtrado = gerar_excel_para_download(df_tabela)
 
                 st.download_button(
                     "📥 Baixar Excel do Período Filtrado",
-                    buffer,
+                    excel_filtrado,
                     file_name=(
                         f"cotacoes_filtradas_"
                         f"{formatar_data_arquivo(data_inicial)}_a_"
                         f"{formatar_data_arquivo(data_final)}.xlsx"
-                    )
+                    ),
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                 )
-
-            df_todas_cotacoes = carregar_todas_cotacoes(supabase)
 
             if df_todas_cotacoes.empty:
                 st.info("Não há cotações para exportar.")
             else:
-                df_exportar_todas = df_todas_cotacoes.copy()
-
-                df_exportar_todas = preparar_dataframe_cotacoes(df_exportar_todas)
-
-                if not df_exportar_todas.empty:
-                    df_exportar_todas["data"] = pd.to_datetime(
-                        df_exportar_todas["data"],
-                        errors="coerce"
-                    ).dt.strftime("%d/%m/%Y")
-
-                    df_exportar_todas["classe"] = pd.Categorical(
-                        df_exportar_todas["classe"],
-                        categories=ORDEM_CLASSES,
-                        ordered=True
-                    )
-
-                    df_exportar_todas = df_exportar_todas.sort_values(
-                        ["data", "classe", "produto"]
-                    )
-
-                buffer_todas = io.BytesIO()
-                df_exportar_todas.to_excel(
-                    buffer_todas,
-                    index=False,
-                    engine="openpyxl"
-                )
-                buffer_todas.seek(0)
+                df_exportar_todas = preparar_exportacao_completa(df_todas_cotacoes)
+                excel_todas = gerar_excel_para_download(df_exportar_todas)
 
                 st.download_button(
                     "📥 Exportar Todas as Cotações",
-                    buffer_todas,
-                    file_name=f"todas_cotacoes_{datetime.now().strftime('%d-%m-%Y')}.xlsx"
+                    excel_todas,
+                    file_name=f"todas_cotacoes_{datetime.now().strftime('%d-%m-%Y')}.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                 )
 
         except Exception as e:
