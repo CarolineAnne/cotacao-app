@@ -1,4 +1,6 @@
 import io
+import os
+import tempfile
 from datetime import datetime
 
 import pandas as pd
@@ -20,6 +22,23 @@ ORDEM_CLASSES = [
 
 def formatar_data_arquivo(data):
     return data.strftime("%d-%m-%Y")
+
+
+def gerar_pdf_para_download(df):
+    caminho_pdf = None
+
+    try:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as temp_pdf:
+            caminho_pdf = temp_pdf.name
+
+        gerar_pdf(df, caminho_pdf)
+
+        with open(caminho_pdf, "rb") as arquivo_pdf:
+            return arquivo_pdf.read()
+
+    finally:
+        if caminho_pdf and os.path.exists(caminho_pdf):
+            os.remove(caminho_pdf)
 
 
 def preparar_dataframe_cotacoes(df):
@@ -294,14 +313,14 @@ def tela_visualizar_dados(supabase):
                 else:
                     nome_pdf = f"cotacoes_{formatar_data_arquivo(data_ref)}.pdf"
 
-                gerar_pdf(df, nome_pdf)
+                pdf_bytes = gerar_pdf_para_download(df)
 
-                with open(nome_pdf, "rb") as f:
-                    st.download_button(
-                        "📥 Baixar PDF",
-                        f,
-                        file_name=nome_pdf
-                    )
+                st.download_button(
+                    "📥 Baixar PDF",
+                    pdf_bytes,
+                    file_name=nome_pdf,
+                    mime="application/pdf"
+                )
 
         except Exception as e:
             st.error(f"Erro ao gerar PDF: {e}")
