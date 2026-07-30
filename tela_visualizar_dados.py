@@ -19,6 +19,18 @@ ORDEM_CLASSES = [
     "SEM CLASSE"
 ]
 
+CABECALHOS_COTACOES = {
+    "data": "Data",
+    "classe": "Classe",
+    "produto": "Produto",
+    "unidade": "Unidade",
+    "kg": "Kg",
+    "preco_min": "Preço mín.",
+    "preco_max": "Preço máx.",
+    "preco_medio": "Preço médio",
+    "valor_kg": "Valor/Kg"
+}
+
 
 def formatar_data_arquivo(data):
     return data.strftime("%d-%m-%Y")
@@ -112,7 +124,7 @@ def aplicar_ordenacao(df):
 def formatar_tabela_exibicao(df, mostrar_data=False):
     df_tabela = df.copy()
 
-    colunas_remover = ["id"]
+    colunas_remover = ["id", "precos_digitados"]
 
     if not mostrar_data:
         colunas_remover.append("data")
@@ -134,6 +146,8 @@ def formatar_tabela_exibicao(df, mostrar_data=False):
             df_tabela[col] = df_tabela[col].apply(
                 lambda x: f"{x:.2f}".replace(".", ",") if pd.notnull(x) else ""
             )
+
+    df_tabela = df_tabela.rename(columns=CABECALHOS_COTACOES)
 
     return df_tabela
 
