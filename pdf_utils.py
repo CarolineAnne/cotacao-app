@@ -7,6 +7,9 @@ from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet
 
+from reportlab.lib.enums import TA_CENTER
+from reportlab.lib.styles import ParagraphStyle
+
 from utils import corrigir_classe
 from graficos_utils import (
     obter_estilo_linha,
@@ -189,9 +192,17 @@ def gerar_pdf(df, nome_pdf):
         estilo_sub.spaceAfter = 2
         estilo_sub.spaceBefore = 0
 
+        estilo_instagram = ParagraphStyle(
+            "Instagram",
+            parent=estilo_sub,
+            alignment=TA_CENTER,
+            fontName="Helvetica-Oblique"
+        )
+
         # -------- TÍTULOS CENTRALIZADOS -------- #
-        elementos.append(Paragraph("AMA - Autarquia Municipal de Abastecimento", estilo_sub))
+       # elementos.append(Paragraph("AMA - Autarquia Municipal de Abastecimento", estilo_sub))
         elementos.append(Paragraph("Diretor Executivo: Celso Candido Almeida Leal", estilo_sub))
+        elementos.append(Paragraph('Instagram Oficial: <i>@mercadodoprodutorjuazeiro</i>', estilo_instagram))
         elementos.append(Paragraph("Relatório de Cotação de Preços", estilo_titulo))
         elementos.append(Spacer(1, 6))  
 
