@@ -53,7 +53,7 @@ PERMISSOES_POR_TELA = {
     "Importações por Excel": {"admin"},
     "Relatório Diário": {"admin", "convidado"},
     "Relatório Semanal": {"admin", "convidado"},
-    "Relatório Mensal": {"admin", "convidado"},
+    #"Relatório Mensal": {"admin", "convidado"},
     "Acompanhamento": {"admin"},
     "Cotação do Dia": {"admin", "cotacao"},
     "Envio de Links": {"admin", "cotacao"},
@@ -311,9 +311,9 @@ if st.session_state.logado:
         menu = [
             "Início",
             "Visualizar Dados",
-            #"Relatório Diário",
+            "Relatório Diário",
             "Relatório Semanal",
-            "Relatório Mensal",
+            #"Relatório Mensal",
             "Relatório Semestral",
             "Post Destaques do Dia"
         ]
@@ -869,13 +869,13 @@ if st.session_state.logado:
     # ==========================================
 
     # ===================== RELATÓRIO MENSAL
-    elif opcao == "Relatório Mensal":
+    #elif opcao == "Relatório Mensal":
 
-        if nivel not in ["admin", "convidado"]:
-            st.error("Acesso restrito.")
-            st.stop()
+     #   if nivel not in ["admin", "convidado"]:
+      #      st.error("Acesso restrito.")
+       #     st.stop()
 
-        tela_relatorio_mensal(supabase)
+        #tela_relatorio_mensal(supabase)
     # ==========================================
 
     # ===================== RELATÓRIO SEMESTRAL
