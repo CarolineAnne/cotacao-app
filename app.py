@@ -36,7 +36,7 @@ from auth_utils import (
 from usuarios import tela_cadastro_usuarios
 from produtos import tela_cadastro_produtos
 
-from relatorio_mensal import tela_relatorio_mensal
+#from relatorio_mensal import tela_relatorio_mensal
 
 from permissionarios import (
     tela_permissionarios_admin,
