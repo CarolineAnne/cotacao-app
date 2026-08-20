@@ -36,6 +36,8 @@ from auth_utils import (
 from usuarios import tela_cadastro_usuarios
 from produtos import tela_cadastro_produtos
 
+from relatorio_mensal import tela_relatorio_mensal
+
 from permissionarios import (
     tela_permissionarios_admin,
     tela_envio_links_permissionarios,
@@ -49,21 +51,22 @@ PERMISSOES_POR_TELA = {
     "Cadastro de Produtos": {"admin"},
     "Permissionários": {"admin"},
     "Importações por Excel": {"admin"},
-    "Relatório Diário": {"admin"},
-    "Relatório Semanal": {"admin"},
+    "Relatório Diário": {"admin", "convidado"},
+    "Relatório Semanal": {"admin", "convidado"},
+    "Relatório Mensal": {"admin", "convidado"},
     "Acompanhamento": {"admin"},
     "Cotação do Dia": {"admin", "cotacao"},
     "Envio de Links": {"admin", "cotacao"},
     "Respostas dos Permissionários": {"admin", "cotacao"},
     "Análise de Preços": {"admin", "cotacao"},
-    "Post Destaques do Dia": {"admin", "cotacao"},
-    "Relatório Semestral": {"admin", "cotacao"},
+    "Post Destaques do Dia": {"admin", "cotacao", "convidado"},
+    "Relatório Semestral": {"admin", "cotacao", "convidado"},
     "Posts Analíticos": {"admin", "cotacao"},
     "Post Unitário do Produto": {"admin", "cotacao"},
     "Informações dos Produtos": {"admin", "cotacao"},
     "Observações de Produtos": {"admin", "cotacao"},
     "Solicitações": {"admin", "cotacao", "requisitante"},
-    "Visualizar Dados": {"admin", "cotacao", "requisitante"},
+    "Visualizar Dados": {"admin", "cotacao", "requisitante", "convidado"},
     "Sobre os Produtos": {"admin", "cotacao", "requisitante"},
 }
 
@@ -277,6 +280,7 @@ if st.session_state.logado:
             "Post Destaques do Dia",
             "Relatório Diário",
             "Relatório Semanal",
+            #"Relatório Mensal",
             "Relatório Semestral",
             "Post Unitário do Produto",
             "Informações dos Produtos",
@@ -301,6 +305,17 @@ if st.session_state.logado:
             "Solicitações",
             "Visualizar Dados",
             "Sobre os Produtos"
+        ]
+
+    elif nivel == "convidado":
+        menu = [
+            "Início",
+            "Visualizar Dados",
+            #"Relatório Diário",
+            "Relatório Semanal",
+            "Relatório Mensal",
+            "Relatório Semestral",
+            "Post Destaques do Dia"
         ]
 
     else:
@@ -836,7 +851,7 @@ if st.session_state.logado:
     # ===================== POST DESTAQUES DO DIA
     elif opcao == "Post Destaques do Dia":
 
-        if nivel not in ["admin", "cotacao"]:
+        if nivel not in ["admin", "cotacao", "convidado"]:
             st.error("Acesso restrito.")
             st.stop()
 
@@ -853,10 +868,20 @@ if st.session_state.logado:
         tela_relatorio_semanal(supabase)
     # ==========================================
 
+    # ===================== RELATÓRIO MENSAL
+    elif opcao == "Relatório Mensal":
+
+        if nivel not in ["admin", "convidado"]:
+            st.error("Acesso restrito.")
+            st.stop()
+
+        tela_relatorio_mensal(supabase)
+    # ==========================================
+
     # ===================== RELATÓRIO SEMESTRAL
     elif opcao == "Relatório Semestral":
 
-        if nivel not in ["admin", "cotacao"]:
+        if nivel not in ["admin", "cotacao", "convidado"]:
             st.error("Acesso restrito.")
             st.stop()
 
