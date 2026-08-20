@@ -4,7 +4,7 @@ import pandas as pd
 from auth_utils import gerar_hash_senha, senha_esta_com_hash
 
 
-NIVEIS_USUARIO = ["admin", "cotacao", "requisitante"]
+NIVEIS_USUARIO = ["admin", "cotacao", "requisitante", "convidado"]
 TAMANHO_MINIMO_SENHA = 8
 
 
