@@ -5,6 +5,11 @@ from datetime import datetime
 import streamlit as st
 import pandas as pd
 
+try:
+    import pdfplumber
+except ImportError:
+    pdfplumber = None
+
 from utils import corrigir_classe
 
 from dados_utils import carregar_produtos
@@ -782,20 +787,199 @@ def formatar_dataframe_importacao_cotacoes(df):
     return df_exibir
 
 
+
+# =========================================================
+# IMPORTAÇÃO DE COTAÇÕES POR PDF DA AMA
+# =========================================================
+def extrair_data_pdf(texto):
+    texto = str(texto or "")
+
+    padroes = [
+        r"Data\s+de\s+Cota(?:ç|c)[aã]o\s*[:\-]?\s*(\d{1,2}/\d{1,2}/\d{4})",
+        r"Data\s*[:\-]?\s*(\d{1,2}/\d{1,2}/\d{4})",
+        r"(\d{1,2}/\d{1,2}/\d{4})",
+    ]
+
+    for padrao in padroes:
+        achado = re.search(padrao, texto, flags=re.IGNORECASE)
+        if achado:
+            data = pd.to_datetime(achado.group(1), errors="coerce", dayfirst=True)
+            if not pd.isna(data):
+                return data.strftime("%Y-%m-%d")
+
+    return None
+
+
+def extrair_classe_pdf(texto):
+    texto_limpo = limpar_texto_busca(texto)
+
+    for classe in ["Hortaliças", "Frutas", "Especiarias", "Cereais"]:
+        if limpar_texto_busca(classe) in texto_limpo:
+            return corrigir_classe(classe)
+
+    achado = re.search(r"Classe\s*[:\-]?\s*([^\n\r]+)", str(texto or ""), flags=re.IGNORECASE)
+    if achado:
+        return corrigir_classe(achado.group(1).strip())
+
+    return "SEM CLASSE"
+
+
+def _linha_pdf_para_registro(linha, data_pdf, classe_pdf, mapa_produtos):
+    if not linha:
+        return None, None
+
+    valores = [str(v or "").strip() for v in linha]
+    if not any(valores):
+        return None, None
+
+    # Ignora cabeçalhos e linhas institucionais.
+    primeira = limpar_texto_busca(valores[0] if valores else "")
+    if primeira in ["PRODUTO", "PRODUTOS"] or produto_deve_ser_ignorado(primeira):
+        return None, None
+
+    # O PDF atual da cotação usa: Produto, Unidade, Kg, Preço Mín,
+    # Preço Máx, Preço Médio e Valor/Kg.
+    if len(valores) < 5:
+        return None, None
+
+    produto = normalizar_nome_produto(valores[0])
+    if not produto:
+        return None, None
+
+    unidade_pdf = valores[1].upper() if len(valores) > 1 else ""
+    kg_pdf = converter_numero(valores[2]) if len(valores) > 2 else 0
+    preco_min = converter_numero(valores[3]) if len(valores) > 3 else 0
+    preco_max = converter_numero(valores[4]) if len(valores) > 4 else 0
+    preco_medio_pdf = converter_numero(valores[5]) if len(valores) > 5 else 0
+
+    if preco_min <= 0 and preco_max <= 0 and preco_medio_pdf <= 0:
+        return None, None
+
+    if preco_min <= 0 and preco_medio_pdf > 0:
+        preco_min = preco_medio_pdf
+    if preco_max <= 0 and preco_medio_pdf > 0:
+        preco_max = preco_medio_pdf
+    if preco_min <= 0 or preco_max <= 0:
+        return None, None
+
+    preco_medio = preco_medio_pdf if preco_medio_pdf > 0 else (preco_min + preco_max) / 2
+
+    cadastro = mapa_produtos.get(produto)
+    aviso = None
+
+    if cadastro:
+        classe = cadastro.get("classe") or classe_pdf
+        unidade = cadastro.get("unidade") or unidade_pdf
+        kg = cadastro.get("kg") or kg_pdf or 1
+    else:
+        classe = classe_pdf
+        unidade = unidade_pdf
+        kg = kg_pdf or 1
+        aviso = f"Produto não encontrado no cadastro e importado com os dados do PDF: {produto}"
+
+    kg = converter_numero(kg)
+    if kg <= 0:
+        kg = 1
+
+    return {
+        "data": data_pdf,
+        "classe": corrigir_classe(classe),
+        "produto": produto,
+        "unidade": unidade,
+        "kg": int(round(float(kg))),
+        "preco_min": float(preco_min),
+        "preco_max": float(preco_max),
+        "preco_medio": float(preco_medio),
+        "valor_kg": float(preco_medio / kg if kg > 0 else preco_medio),
+    }, aviso
+
+
+def preparar_cotacoes_pdf_ama(arquivo_pdf, df_produtos):
+    if pdfplumber is None:
+        raise ImportError(
+            "A biblioteca pdfplumber não está instalada. Adicione pdfplumber ao requirements.txt."
+        )
+
+    if hasattr(arquivo_pdf, "seek"):
+        arquivo_pdf.seek(0)
+
+    base_produtos = preparar_base_produtos(df_produtos)
+    mapa_produtos = {}
+    for _, row in base_produtos.iterrows():
+        mapa_produtos[row["nome"]] = {
+            "classe": row.get("classe", "SEM CLASSE"),
+            "unidade": row.get("unidade", ""),
+            "kg": row.get("kg", 1),
+        }
+
+    registros = []
+    resumos = []
+    avisos = []
+    data_geral = None
+
+    with pdfplumber.open(arquivo_pdf) as pdf:
+        for numero_pagina, pagina in enumerate(pdf.pages, start=1):
+            texto = pagina.extract_text() or ""
+            data_pagina = extrair_data_pdf(texto) or data_geral
+            if data_pagina and not data_geral:
+                data_geral = data_pagina
+
+            classe_pagina = extrair_classe_pdf(texto)
+            tabelas = pagina.extract_tables() or []
+            total_pagina = 0
+
+            for tabela in tabelas:
+                for linha in tabela:
+                    registro, aviso = _linha_pdf_para_registro(
+                        linha, data_pagina, classe_pagina, mapa_produtos
+                    )
+                    if registro:
+                        registros.append(registro)
+                        total_pagina += 1
+                    if aviso and aviso not in avisos:
+                        avisos.append(aviso)
+
+            resumos.append({
+                "Página": numero_pagina,
+                "Data": pd.to_datetime(data_pagina).strftime("%d/%m/%Y") if data_pagina else "",
+                "Classe": classe_pagina,
+                "Registros": total_pagina,
+                "Status": "Lida" if total_pagina else "Sem tabela reconhecida",
+            })
+
+    if not registros:
+        raise ValueError(
+            "Nenhuma cotação foi reconhecida no PDF. Use um PDF de cotação da AMA com texto/tabela selecionável. "
+            "PDF digitalizado como imagem precisa de OCR antes da importação."
+        )
+
+    if not data_geral and any(not r.get("data") for r in registros):
+        raise ValueError("Não foi possível identificar a data da cotação no PDF.")
+
+    for registro in registros:
+        if not registro.get("data"):
+            registro["data"] = data_geral
+
+    df = pd.DataFrame(registros)
+    df = df.drop_duplicates(subset=["data", "produto"], keep="last").reset_index(drop=True)
+
+    return df, pd.DataFrame(resumos), avisos
+
 # =========================================================
 # TELA
 # =========================================================
 def tela_importacoes_excel(supabase):
-    st.title("📥 Importações por Excel")
+    st.title("📥 Importações por Excel e PDF")
 
     st.info(
-        "Nesta tela você poderá importar cotações antigas, uma planilha completa "
+        "Nesta tela você poderá importar cotações por Excel ou PDF, uma planilha completa "
         "da AMA com várias abas e volumes do ano anterior."
     )
 
-    aba1, aba2, aba3 = st.tabs([
+    aba1, aba2, aba_pdf, aba3 = st.tabs([
         "📊 Importar cotações antigas",
         "📑 Importar planilha completa da AMA",
+        "📄 Importar cotação por PDF",
         "📦 Importar volumes do ano anterior"
     ])
 
@@ -992,6 +1176,102 @@ def tela_importacoes_excel(supabase):
 
             except Exception as e:
                 st.error(f"Erro ao importar planilha completa da AMA: {e}")
+
+
+    with aba_pdf:
+        st.subheader("📄 Importar cotação por PDF")
+
+        st.markdown(
+            """
+            Esta opção lê o **PDF de cotação da AMA** e transforma a tabela em registros do banco.
+
+            O sistema procura: `Produto`, `Unidade`, `Kg`, `Preço Mín`, `Preço Máx`,
+            `Preço Médio` e `Valor/Kg`, além da **data da cotação** e da **classe**.
+
+            Antes de salvar, será mostrada uma **prévia para conferência**.
+
+            **Observação:** o PDF precisa possuir texto/tabela selecionável. PDFs digitalizados
+            apenas como imagem precisam de OCR e não são salvos automaticamente.
+            """
+        )
+
+        arquivo_pdf = st.file_uploader(
+            "Selecione o PDF da cotação",
+            type=["pdf"],
+            key="upload_cotacao_pdf"
+        )
+
+        ignorar_duplicadas_pdf = st.checkbox(
+            "Ignorar cotações já existentes por data e produto",
+            value=True,
+            key="ignorar_duplicadas_pdf"
+        )
+
+        if arquivo_pdf is not None:
+            try:
+                df_produtos = carregar_produtos(supabase)
+                df_preparado, resumo_paginas, avisos = preparar_cotacoes_pdf_ama(
+                    arquivo_pdf,
+                    df_produtos
+                )
+
+                total_lido = len(df_preparado)
+
+                if ignorar_duplicadas_pdf:
+                    df_preparado = remover_cotacoes_duplicadas(
+                        supabase,
+                        df_preparado
+                    )
+
+                st.success(
+                    f"{total_lido} cotação(ões) lida(s) no PDF. "
+                    f"{len(df_preparado)} cotação(ões) pronta(s) para importar."
+                )
+
+                st.subheader("Resumo das páginas lidas")
+                st.dataframe(resumo_paginas, width="stretch", hide_index=True)
+
+                if avisos:
+                    st.warning(
+                        "Alguns produtos não foram encontrados no cadastro. "
+                        "Confira os dados abaixo antes de salvar."
+                    )
+                    with st.expander("Ver avisos"):
+                        for aviso in avisos[:80]:
+                            st.write(f"- {aviso}")
+
+                st.subheader("Prévia das cotações que serão importadas")
+                st.dataframe(
+                    formatar_dataframe_importacao_cotacoes(df_preparado.head(100)),
+                    width="stretch"
+                )
+
+                confirmar_pdf = st.checkbox(
+                    "Conferi a prévia e confirmo a importação destes dados",
+                    key="confirmar_importacao_pdf"
+                )
+
+                if st.button(
+                    "💾 Salvar cotações do PDF no banco",
+                    type="primary",
+                    key="btn_salvar_pdf",
+                    disabled=not confirmar_pdf
+                ):
+                    registros = df_preparado.to_dict(orient="records")
+
+                    if not registros:
+                        st.warning("Não há registros novos para salvar.")
+                    else:
+                        total = salvar_em_lotes(
+                            supabase,
+                            TABELA_COTACOES,
+                            registros,
+                            upsert=False
+                        )
+                        st.success(f"{total} cotação(ões) do PDF importada(s) com sucesso.")
+
+            except Exception as e:
+                st.error(f"Erro ao importar PDF: {e}")
 
     with aba3:
         st.subheader("📦 Importar volumes do ano anterior")
